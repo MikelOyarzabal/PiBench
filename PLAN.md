@@ -235,8 +235,8 @@ En la Pi, crear el entorno virtual con `python3 -m venv --system-site-packages v
 
 ### Fase 0: Preparación
 - [x] Repositorio en GitHub creado, con `.gitignore`, `README.md` y `requirements.txt`.
-- [ ] Raspberry Pi OS instalado en la Pi 5, SSH activado, I2C activado.
-- [ ] Entorno virtual creado (`--system-site-packages`) y dependencias instaladas.
+- [x] Raspberry Pi OS instalado en la Pi 5, SSH activado, I2C activado.
+- [x] Entorno virtual creado (`--system-site-packages`) y dependencias instaladas.
 
 ### Fase 1: Benchmark (en el portátil)
 - [ ] `mandelbrot.py`: función que calcula un bloque de filas.
