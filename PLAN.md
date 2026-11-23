@@ -246,8 +246,8 @@ En la Pi, crear el entorno virtual con `python3 -m venv --system-site-packages v
 - **Hecho cuando:** en el portátil, la versión con procesos es claramente más rápida y la de hilos no.
 
 ### Fase 2: GPIO
-- [ ] `gpio.py` con los 2 LEDs y los 2 pulsadores (`gpiozero`), pines desde `config.py`.
-- [ ] Prueba con `MockFactory` en el portátil.
+- [x] `gpio.py` con los 2 LEDs y los 2 pulsadores (`gpiozero`), pines desde `config.py`.
+- [x] Prueba con `MockFactory` en el portátil.
 - [ ] Prueba real en la Pi: cada pulsador enciende su LED.
 
 ### Fase 3: Procesos e hilos

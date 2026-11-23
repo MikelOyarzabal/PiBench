@@ -14,13 +14,22 @@ muestran con LEDs, una web en tiempo real (Flask) y un bot de Telegram.
 - 2 × Grove LED-pulsador.
 - Grove Temperature & Humidity Sensor V2.0 (DHT20, I2C, dirección `0x38`).
 
-| Señal | GPIO |
-|---|---|
-| LED estado | GPIO17 |
-| Pulsador lanzar | GPIO27 |
-| LED alerta | GPIO22 |
-| Pulsador nº procesos | GPIO23 |
-| DHT20 SDA / SCL | GPIO2 (pin 3) / GPIO3 (pin 5) |
+Módulos Grove "Red LED Button v1.0": hilo **amarillo = LED**, **blanco = pulsador**
+(activo a nivel bajo), rojo = VCC, negro = GND.
+
+> ⚠️ Alimentar los módulos a **3,3 V** (pines 1 o 17), nunca a 5 V: los GPIO de la Pi solo admiten 3,3 V.
+
+| Módulo | Señal | GPIO | Pin físico |
+|---|---|---|---|
+| 1 | LED estado | GPIO17 | 11 |
+| 1 | Pulsador lanzar | GPIO27 | 13 |
+| 1 | VCC / GND | 3,3 V / GND | 1 / 6 |
+| 2 | LED alerta | GPIO22 | 15 |
+| 2 | Pulsador nº procesos | GPIO23 | 16 |
+| 2 | VCC / GND | 3,3 V / GND | 17 / 9 |
+| DHT20 | SDA / SCL | GPIO2 / GPIO3 | 3 / 5 |
+
+Los pines se cambian en `config.py`.
 
 ## Preparar la Raspberry Pi
 
@@ -67,6 +76,15 @@ python -m benchmark.prueba --barrido    # procesos con N = 1, 2, 3 y 4
 ```
 
 El tamaño del fractal se ajusta en `config.py`. La imagen se guarda en `resultados/mandelbrot.png`.
+
+Prueba de LEDs y pulsadores (cada pulsador enciende su LED; Ctrl+C para salir):
+
+```bash
+python -m hardware.prueba_gpio                     # en la Raspberry Pi
+PIBENCH_SIMULADO=1 python -m hardware.prueba_gpio  # en el portátil (simulado)
+```
+
+En PowerShell, el modo simulado se activa con `$env:PIBENCH_SIMULADO = "1"`.
 
 _La aplicación completa (LEDs, web, Telegram) llegará en las fases siguientes._
 
