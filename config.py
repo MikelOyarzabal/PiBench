@@ -3,9 +3,10 @@
 # --- Benchmark (fractal de Mandelbrot) ---
 # Tamaño de la imagen y nº máximo de iteraciones por píxel.
 # Ajustar en la Pi para que la versión secuencial tarde unos 5-10 s.
+# Medido en la Pi 5: 800x600 con 1000 iteraciones -> 14,9 s (demasiado).
 ANCHO = 800
 ALTO = 600
-MAX_ITER = 1000
+MAX_ITER = 500
 
 # Zona del plano complejo que se dibuja (proporción 4:3, como la imagen).
 X_MIN, X_MAX = -2.5, 1.0
