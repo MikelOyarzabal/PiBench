@@ -248,7 +248,7 @@ En la Pi, crear el entorno virtual con `python3 -m venv --system-site-packages v
 ### Fase 2: GPIO
 - [x] `gpio.py` con los 2 LEDs y los 2 pulsadores (`gpiozero`), pines desde `config.py`.
 - [x] Prueba con `MockFactory` en el portátil.
-- [ ] Prueba real en la Pi: cada pulsador enciende su LED.
+- [x] Prueba real en la Pi: cada pulsador enciende su LED.
 
 ### Fase 3: Procesos e hilos
 - [ ] `benchmark_worker.py`: proceso que espera órdenes en `cola_ordenes` y devuelve resultados en `cola_resultados`.
