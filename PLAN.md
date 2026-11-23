@@ -239,10 +239,10 @@ En la Pi, crear el entorno virtual con `python3 -m venv --system-site-packages v
 - [x] Entorno virtual creado (`--system-site-packages`) y dependencias instaladas.
 
 ### Fase 1: Benchmark (en el portátil)
-- [ ] `mandelbrot.py`: función que calcula un bloque de filas.
-- [ ] Versiones secuencial, con hilos y con procesos (N configurable).
-- [ ] Test: las tres versiones dan exactamente la misma imagen.
-- [ ] Script de prueba que imprime tiempos y speedup.
+- [x] `mandelbrot.py`: función que calcula un bloque de filas.
+- [x] Versiones secuencial, con hilos y con procesos (N configurable).
+- [x] Test: las tres versiones dan exactamente la misma imagen.
+- [x] Script de prueba que imprime tiempos y speedup.
 - **Hecho cuando:** en el portátil, la versión con procesos es claramente más rápida y la de hilos no.
 
 ### Fase 2: GPIO

@@ -59,7 +59,16 @@ Ejecutar con la variable `PIBENCH_SIMULADO=1` para simular LEDs, pulsadores y se
 
 ## Ejecución
 
-_Pendiente (fases siguientes)._
+Prueba del benchmark (secuencial, hilos y procesos, con tiempos y speedup):
+
+```bash
+python -m benchmark.prueba              # 4 procesos
+python -m benchmark.prueba --barrido    # procesos con N = 1, 2, 3 y 4
+```
+
+El tamaño del fractal se ajusta en `config.py`. La imagen se guarda en `resultados/mandelbrot.png`.
+
+_La aplicación completa (LEDs, web, Telegram) llegará en las fases siguientes._
 
 ## Tests
 
