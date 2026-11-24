@@ -15,6 +15,7 @@ class Estado:
 
         # Benchmark
         self.benchmark_en_curso = False
+        self.id_benchmark = None            # nº del benchmark en curso (agrupa sus ejecuciones)
         self.hay_resultado = False          # para dejar el LED de estado fijo al acabar
         self.n_procesos = config.N_PROCESOS_INICIAL
 

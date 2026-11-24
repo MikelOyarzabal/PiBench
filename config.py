@@ -44,6 +44,10 @@ N_PROCESOS_INICIAL = 4
 # Dónde se guarda la última imagen del fractal.
 RUTA_IMAGEN = os.path.join("resultados", "mandelbrot.png")
 
+# --- Base de datos (SQLite) ---
+RUTA_DB = "pibench.db"
+HORAS_LECTURAS = 24  # al arrancar se borran las lecturas más antiguas que esto
+
 # --- Hilos del controlador ---
 INTERVALO_MONITOR_S = 2.0            # lecturas de temperatura y uso normales
 INTERVALO_MONITOR_BENCHMARK_S = 0.5  # más seguido durante un benchmark (para la temp. máxima)

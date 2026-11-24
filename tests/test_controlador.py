@@ -8,9 +8,11 @@ import pytest
 from gpiozero import Device
 from gpiozero.pins.mock import MockFactory
 
+from datos.db import BaseDatos
 from estado import Estado
 from hardware.gpio import Hardware, simular_pulsacion
-from hardware.hilos import cambiar_n_procesos, hilo_leds, hilo_pulsadores, pedir_benchmark
+from hardware.hilos import (cambiar_n_procesos, hilo_leds, hilo_monitor, hilo_pulsadores,
+                            pedir_benchmark)
 from main import procesar_resultado
 
 
@@ -101,30 +103,67 @@ def test_led_estado_parpadea_y_queda_fijo(hw):
 
 # --- Mensajes del proceso benchmark ---
 
-def test_procesar_resultados():
+@pytest.fixture
+def db(tmp_path):
+    base = BaseDatos(tmp_path / "prueba.db")
+    base.inicializar()
+    return base
+
+
+def mensaje_ejecucion(version):
+    return {"tipo": "ejecucion", "fecha": "2026-11-23T12:00:00", "version": version,
+            "n_trabajadores": 1, "tiempo_s": 7.5, "speedup": 1.0, "imagen_correcta": True}
+
+
+def test_procesar_resultados(db):
     estado = Estado()
-    procesar_resultado(estado, {"tipo": "inicio", "orden": "lanzar", "n_procesos": 4})
+    procesar_resultado(estado, {"tipo": "inicio", "orden": "lanzar", "n_procesos": 4}, db)
     assert estado.benchmark_en_curso
+    assert estado.id_benchmark == 1
 
     procesar_resultado(estado, {"tipo": "version_inicio", "version": "secuencial",
-                                "n_trabajadores": 1})
+                                "n_trabajadores": 1}, db)
     assert estado.medicion is not None
     estado.medicion["temp_cpu_max"] = 99.0  # como si el monitor hubiera visto 99 °C
 
-    ejecucion = procesar_resultado(estado, {
-        "tipo": "ejecucion", "fecha": "2026-11-23T12:00:00", "version": "secuencial",
-        "n_trabajadores": 1, "tiempo_s": 7.5, "speedup": 1.0, "imagen_correcta": True})
+    ejecucion = procesar_resultado(estado, mensaje_ejecucion("secuencial"), db)
     assert ejecucion["temp_cpu_max"] == 99.0
     assert "temp_cpu_inicio" in ejecucion and "throttling" in ejecucion
     assert estado.medicion is None
 
-    procesar_resultado(estado, {"tipo": "fin", "correcto": True, "imagen": "x.png"})
+    procesar_resultado(estado, {"tipo": "fin", "correcto": True, "imagen": "x.png"}, db)
     assert not estado.benchmark_en_curso
     assert estado.hay_resultado
 
+    # Se ha guardado en la base de datos, con su temperatura máxima.
+    [fila] = db.ultimas_ejecuciones()
+    assert (fila["id_benchmark"], fila["version"], fila["temp_cpu_max"]) == (1, "secuencial", 99.0)
 
-def test_error_libera_el_benchmark():
+
+def test_cada_benchmark_tiene_su_id(db):
+    estado = Estado()
+    for _ in range(2):
+        procesar_resultado(estado, {"tipo": "inicio", "orden": "lanzar", "n_procesos": 4}, db)
+        procesar_resultado(estado, mensaje_ejecucion("secuencial"), db)
+        procesar_resultado(estado, {"tipo": "fin", "correcto": True, "imagen": "x.png"}, db)
+    assert [e["id_benchmark"] for e in db.ultimas_ejecuciones()] == [2, 1]
+
+
+def test_error_libera_el_benchmark(db):
     estado = Estado()
     estado.benchmark_en_curso = True
-    procesar_resultado(estado, {"tipo": "error", "mensaje": "algo"})
+    procesar_resultado(estado, {"tipo": "error", "mensaje": "algo"}, db)
     assert not estado.benchmark_en_curso
+
+
+def test_hilo_monitor_guarda_lecturas(db):
+    estado = Estado()
+    hilo, parar = arrancar(hilo_monitor, estado, db)
+    try:
+        assert esperar(lambda: db.ultima_lectura() is not None)
+    finally:
+        parar.set()
+        hilo.join(timeout=3)
+    lectura = db.ultima_lectura()
+    assert lectura["temp_cpu"] == estado.temp_cpu
+    assert isinstance(lectura["uso_cpu"], list)

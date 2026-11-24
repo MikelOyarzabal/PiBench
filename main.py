@@ -21,6 +21,7 @@ import time
 
 import config
 from benchmark.benchmark_worker import proceso_benchmark
+from datos.db import BaseDatos
 from estado import Estado
 from hardware import sensores
 from hardware.gpio import Hardware, simular_pulsacion
@@ -32,13 +33,15 @@ log = logging.getLogger("controlador")
 
 # --- Hilo resultados ---
 
-def procesar_resultado(estado, mensaje):
+def procesar_resultado(estado, mensaje, db):
     """Trata un mensaje que llega del proceso benchmark."""
     tipo = mensaje["tipo"]
 
     if tipo == "inicio":
+        id_benchmark = db.siguiente_id_benchmark()
         with estado.lock:
             estado.benchmark_en_curso = True  # por si la orden no vino de un pulsador
+            estado.id_benchmark = id_benchmark
 
     elif tipo == "version_inicio":
         # Empieza una versión: apuntamos la temperatura inicial; el hilo monitor irá
@@ -52,11 +55,14 @@ def procesar_resultado(estado, mensaje):
         with estado.lock:
             medicion = estado.medicion or {}
             estado.medicion = None
-        ejecucion = {**mensaje, **medicion, "temp_ambiente": None}  # DHT20: fase 6
+            id_benchmark = estado.id_benchmark
+        ejecucion = {**mensaje, **medicion, "id_benchmark": id_benchmark,
+                     "temp_ambiente": None}  # DHT20: fase 6
         log.info("Resultado: %s n=%d  %.3f s  speedup %.2f  temp máx %s °C",
                  ejecucion["version"], ejecucion["n_trabajadores"], ejecucion["tiempo_s"],
                  ejecucion["speedup"], ejecucion.get("temp_cpu_max"))
-        # Fase 4: guardar en SQLite. Fase 7: avisar por Telegram.
+        db.guardar_ejecucion(ejecucion)
+        # Fase 7: avisar por Telegram.
         return ejecucion
 
     elif tipo == "fin":
@@ -78,14 +84,18 @@ def procesar_resultado(estado, mensaje):
     return None
 
 
-def hilo_resultados(estado, cola_resultados, parar):
-    """Recibe los resultados del proceso benchmark."""
+def hilo_resultados(estado, cola_resultados, db, parar):
+    """Recibe los resultados del proceso benchmark y los guarda."""
     while not parar.is_set():
         try:
             mensaje = cola_resultados.get(timeout=0.5)
         except queue.Empty:
             continue
-        procesar_resultado(estado, mensaje)
+        try:
+            procesar_resultado(estado, mensaje, db)
+        except Exception:
+            # Un fallo (por ejemplo, de la base de datos) no debe parar este hilo.
+            log.exception("Error al procesar el mensaje %s", mensaje.get("tipo"))
 
 
 # --- Solo en modo simulado: el teclado hace de pulsadores ---
@@ -124,6 +134,11 @@ def hilo_teclado(hw, parar):
 def main():
     configurar_logging()
 
+    # 0) Base de datos: crea las tablas si hace falta y borra lecturas viejas.
+    db = BaseDatos(config.RUTA_DB)
+    borradas = db.inicializar()
+    log.info("Base de datos %s lista (%d lecturas antiguas borradas)", config.RUTA_DB, borradas)
+
     # 1) Proceso benchmark. Se crea antes que los hilos para que el proceso nuevo
     #    no herede hilos a medias.
     cola_ordenes = mp.Queue()
@@ -142,9 +157,9 @@ def main():
         threading.Thread(target=hilo_pulsadores, name="pulsadores",
                          args=(hw, estado, cola_ordenes, cola_parpadeos, parar)),
         threading.Thread(target=hilo_leds, name="leds", args=(hw, estado, cola_parpadeos, parar)),
-        threading.Thread(target=hilo_monitor, name="monitor", args=(estado, parar)),
+        threading.Thread(target=hilo_monitor, name="monitor", args=(estado, db, parar)),
         threading.Thread(target=hilo_resultados, name="resultados",
-                         args=(estado, cola_resultados, parar)),
+                         args=(estado, cola_resultados, db, parar)),
     ]
     for hilo in hilos:
         hilo.start()

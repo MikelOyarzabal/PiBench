@@ -6,6 +6,7 @@ su bucle y acaban. Así el cierre es limpio.
 
 import logging
 import queue
+import sqlite3
 
 import config
 from hardware import sensores
@@ -95,12 +96,19 @@ def hilo_leds(hw, estado, cola_parpadeos, parar):
         parar.wait(config.PARPADEO_S)
 
 
-def hilo_monitor(estado, parar):
-    """Lee la temperatura, el uso de cada núcleo y el throttling cada pocos segundos."""
+def hilo_monitor(estado, db, parar):
+    """Lee la temperatura, el uso de cada núcleo y el throttling cada pocos segundos,
+    y lo guarda en la base de datos.
+    """
     while not parar.is_set():
         temp = sensores.temp_cpu()
         uso = sensores.uso_cpu()
         throttling = sensores.throttling()
+
+        try:
+            db.guardar_lectura(temp, uso)  # temp. ambiente y humedad: fase 6
+        except sqlite3.Error as e:
+            log.warning("No se pudo guardar la lectura: %s", e)  # seguimos sin ella
 
         with estado.lock:
             estado.temp_cpu = temp

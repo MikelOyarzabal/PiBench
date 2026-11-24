@@ -133,6 +133,7 @@ compartido (por ejemplo `benchmark_en_curso`) y colas (`queue.Queue`) entre hilo
 ```sql
 CREATE TABLE ejecuciones (
     id INTEGER PRIMARY KEY,
+    id_benchmark INTEGER NOT NULL,  -- agrupa las versiones de una misma pulsación
     fecha TEXT NOT NULL,
     version TEXT NOT NULL,          -- 'secuencial' | 'hilos' | 'procesos'
     n_trabajadores INTEGER NOT NULL,
@@ -259,9 +260,9 @@ En la Pi, crear el entorno virtual con `python3 -m venv --system-site-packages v
 - [x] **Cierre limpio** con Ctrl+C: se paran hilos y procesos y se apagan los LEDs.
 
 ### Fase 4: Base de datos
-- [ ] `db.py` con las tablas de la sección 5 (modo WAL).
-- [ ] El controlador guarda ejecuciones y lecturas.
-- [ ] Tests de inserción y consulta.
+- [x] `db.py` con las tablas de la sección 5 (modo WAL).
+- [x] El controlador guarda ejecuciones y lecturas.
+- [x] Tests de inserción y consulta.
 
 ### Fase 5: Web
 - [ ] Flask en su propio proceso, con la API de la sección 6.

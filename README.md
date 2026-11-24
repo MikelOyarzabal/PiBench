@@ -99,6 +99,12 @@ PIBENCH_SIMULADO=1 python main.py    # en el portátil: teclas l (lanzar), p (n�
 - Mientras hay un benchmark en curso, las pulsaciones se ignoran.
 - **Ctrl+C** cierra todo de forma ordenada: hilos, proceso benchmark y LEDs.
 
+Los resultados y las lecturas de los sensores se guardan en `pibench.db` (SQLite). Para verlos:
+
+```bash
+python -m datos.db
+```
+
 _La web y Telegram llegarán en las fases siguientes._
 
 ## Tests
