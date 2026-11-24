@@ -60,8 +60,13 @@ cd PiBench
 python3 -m venv --system-site-packages venv   # para usar gpiozero y lgpio del sistema
 source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env                           # y rellenar el token de Telegram
+cp .env.example .env                           # y rellenar el token de Telegram en .env
 ```
+
+> 🔒 **El token de Telegram va solo en `.env`, nunca en `.env.example`.**
+> `.env` está en `.gitignore` y no se sube a GitHub; `.env.example` sí se sube y debe quedarse
+> con los valores vacíos (solo sirve de plantilla). Si un token llega a subirse, aunque luego se
+> borre sigue en el historial de git: hay que **revocarlo** en @BotFather (`/revoke`) y crear otro.
 
 ### En el portátil (sin hardware)
 
@@ -130,7 +135,14 @@ New-Item -ItemType Directory -Force web\static\vendor
 Invoke-WebRequest https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js -OutFile web\static\vendor\chart.umd.min.js
 ```
 
-_El bot de Telegram llegará en la fase 7._
+### Telegram
+
+Si `.env` tiene `TELEGRAM_TOKEN` y `TELEGRAM_CHAT_ID`, PiBench envía un mensaje al arrancar, un
+resumen al terminar cada benchmark (tiempos, speedup, temperaturas) y un aviso cuando se enciende
+el LED de alerta. Los mensajes los envía un hilo propio desde una cola, así que un envío lento
+nunca bloquea al resto.
+
+Si falta el token o no hay Internet, el programa funciona igual: solo deja un aviso en el log.
 
 ## Tests
 

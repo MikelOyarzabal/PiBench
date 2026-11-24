@@ -5,7 +5,7 @@ del cierre limpio con Ctrl+C.
 
     Procesos:  controlador (este)  +  benchmark (benchmark_worker.py, con su Pool)
                +  web (web/app.py, Flask)
-    Hilos del controlador:  pulsadores, LEDs, monitor y resultados
+    Hilos del controlador:  pulsadores, LEDs, monitor, resultados y telegram
 
 Uso:
     python main.py                       # en la Raspberry Pi
@@ -28,6 +28,7 @@ from estado import Estado
 from hardware import sensores
 from hardware.gpio import Hardware, simular_pulsacion
 from hardware.hilos import hilo_leds, hilo_monitor, hilo_pulsadores
+from notificador.telegram import NotificadorTelegram, resumen_benchmark
 from registro import configurar_logging
 from web.app import proceso_web
 
@@ -36,7 +37,7 @@ log = logging.getLogger("controlador")
 
 # --- Hilo resultados ---
 
-def procesar_resultado(estado, mensaje, db):
+def procesar_resultado(estado, mensaje, db, notificador=None):
     """Trata un mensaje que llega del proceso benchmark."""
     tipo = mensaje["tipo"]
 
@@ -44,6 +45,7 @@ def procesar_resultado(estado, mensaje, db):
         with estado.lock:
             estado.benchmark_en_curso = True
             estado.id_benchmark = mensaje["id_benchmark"]
+            estado.ejecuciones_benchmark = []
 
     elif tipo == "version_inicio":
         # Empieza una versión: apuntamos la temperatura inicial; el hilo monitor irá
@@ -58,23 +60,28 @@ def procesar_resultado(estado, mensaje, db):
         with estado.lock:
             medicion = estado.medicion or {}
             estado.medicion = None
-        ejecucion = {**mensaje, **medicion}
+            ejecucion = {**mensaje, **medicion}
+            estado.ejecuciones_benchmark.append(ejecucion)
         log.info("Resultado: %s n=%d  %.3f s  speedup %.2f  temp máx %s °C",
                  ejecucion["version"], ejecucion["n_trabajadores"], ejecucion["tiempo_s"],
                  ejecucion["speedup"], ejecucion.get("temp_cpu_max"))
         db.guardar_ejecucion(ejecucion)
-        # Fase 7: avisar por Telegram.
         return ejecucion
 
     elif tipo == "fin":
         with estado.lock:
             estado.benchmark_en_curso = False
             estado.hay_resultado = True
+            id_benchmark = estado.id_benchmark
+            ejecuciones = list(estado.ejecuciones_benchmark)
         if mensaje["correcto"]:
             log.info("Benchmark terminado; las imágenes coinciden. Imagen (paleta %s) en %s",
                      mensaje.get("paleta"), mensaje["imagen"])
         else:
             log.error("Benchmark terminado, pero alguna versión dio una imagen DISTINTA")
+        if notificador is not None:
+            notificador.enviar(resumen_benchmark(id_benchmark, ejecuciones, mensaje["correcto"],
+                                                 mensaje.get("paleta")))
 
     elif tipo in ("cancelado", "error"):
         with estado.lock:
@@ -86,15 +93,15 @@ def procesar_resultado(estado, mensaje, db):
     return None
 
 
-def hilo_resultados(estado, cola_resultados, db, parar):
-    """Recibe los resultados del proceso benchmark y los guarda."""
+def hilo_resultados(estado, cola_resultados, db, notificador, parar):
+    """Recibe los resultados del proceso benchmark, los guarda y avisa por Telegram."""
     while not parar.is_set():
         try:
             mensaje = cola_resultados.get(timeout=0.5)
         except queue.Empty:
             continue
         try:
-            procesar_resultado(estado, mensaje, db)
+            procesar_resultado(estado, mensaje, db, notificador)
         except Exception:
             # Un fallo (por ejemplo, de la base de datos) no debe parar este hilo.
             log.exception("Error al procesar el mensaje %s", mensaje.get("tipo"))
@@ -162,14 +169,20 @@ def main():
     hw = Hardware()
     parar = threading.Event()
     cola_parpadeos = queue.Queue()
+    notificador = NotificadorTelegram(config.TELEGRAM_TOKEN, config.TELEGRAM_CHAT_ID)
     hilos = [
         threading.Thread(target=hilo_pulsadores, name="pulsadores",
                          args=(hw, estado, cola_eventos, cola_ordenes, cola_parpadeos, parar)),
         threading.Thread(target=hilo_leds, name="leds", args=(hw, estado, cola_parpadeos, parar)),
-        threading.Thread(target=hilo_monitor, name="monitor", args=(estado, db, parar)),
+        threading.Thread(target=hilo_monitor, name="monitor", args=(estado, db, notificador, parar)),
         threading.Thread(target=hilo_resultados, name="resultados",
-                         args=(estado, cola_resultados, db, parar)),
+                         args=(estado, cola_resultados, db, notificador, parar)),
     ]
+    if notificador.activo:
+        hilos.append(threading.Thread(target=notificador.hilo, name="telegram", args=(parar,)))
+        notificador.enviar("PiBench en marcha. Te avisaré al terminar cada benchmark.")
+    else:
+        log.warning("Telegram desactivado: falta TELEGRAM_TOKEN o TELEGRAM_CHAT_ID en .env")
     for hilo in hilos:
         hilo.start()
     if config.SIMULADO:
@@ -209,7 +222,8 @@ def cerrar(hw, hilos, parar, proceso, parar_proceso, cola_ordenes, cola_eventos,
 
     parar.set()
     for hilo in hilos:
-        hilo.join(timeout=2)
+        # Margen para que el hilo telegram termine un envío a medias (timeout de requests).
+        hilo.join(timeout=config.TIMEOUT_TELEGRAM_S + 1)
         if hilo.is_alive():
             log.warning("El hilo %s no ha terminado a tiempo", hilo.name)
 

@@ -11,6 +11,7 @@ import time
 
 import config
 from hardware import sensores
+from notificador.telegram import aviso_alerta
 
 log = logging.getLogger(__name__)
 
@@ -126,10 +127,10 @@ def actualizar_alerta(activa, temp):
     return activa
 
 
-def hilo_monitor(estado, db, parar):
+def hilo_monitor(estado, db, notificador, parar):
     """Cada pocos segundos lee la temperatura de la CPU, el uso de cada núcleo, el
     throttling y la temperatura y humedad ambiente; lo guarda en la base de datos y
-    decide si hay que activar la alerta de temperatura.
+    decide si hay que activar la alerta de temperatura (y avisar por Telegram).
     """
     sensor_ambiente = sensores.SensorAmbiente()
     if not sensor_ambiente.disponible:
@@ -165,6 +166,8 @@ def hilo_monitor(estado, db, parar):
         if alerta != alerta_antes:
             if alerta:
                 log.warning("¡Alerta! CPU a %.1f °C (umbral %.0f °C)", temp, config.UMBRAL_TEMP_CPU)
+                if notificador is not None:
+                    notificador.enviar(aviso_alerta(temp))
             else:
                 log.info("Fin de la alerta: CPU a %.1f °C", temp)
 

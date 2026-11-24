@@ -183,7 +183,7 @@ def test_error_libera_el_benchmark(db):
 
 def test_hilo_monitor_guarda_lecturas(db):
     estado = Estado()
-    hilo, parar = arrancar(hilo_monitor, estado, db)
+    hilo, parar = arrancar(hilo_monitor, estado, db, None)
     try:
         assert esperar(lambda: db.ultima_lectura() is not None)
     finally:

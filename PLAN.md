@@ -287,7 +287,7 @@ En la Pi, crear el entorno virtual con `python3 -m venv --system-site-packages v
 - [x] LED de alerta cuando la temperatura de la CPU pase del umbral (`config.py`, por ejemplo 75 °C).
 
 ### Fase 7: Bot de Telegram
-- [ ] Crear el bot, guardar el token y el chat_id en `.env`.
+- [x] Crear el bot, guardar el token y el chat_id en `.env`.
 - [ ] Hilo notificador con cola; mensaje al terminar cada benchmark.
 - [ ] Probar sin Internet: el programa no se cuelga.
 - [ ] Probar en la red de la universidad.

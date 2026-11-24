@@ -2,6 +2,8 @@
 
 import os
 
+from dotenv import load_dotenv
+
 # Rutas absolutas a partir de la carpeta del proyecto: así funcionan aunque el
 # programa se arranque desde otra carpeta (por ejemplo, como servicio).
 CARPETA_PROYECTO = os.path.dirname(os.path.abspath(__file__))
@@ -71,6 +73,15 @@ PUERTO_WEB = 5000
 # --- Base de datos (SQLite) ---
 RUTA_DB = os.path.join(CARPETA_PROYECTO, "pibench.db")
 HORAS_LECTURAS = 24  # al arrancar se borran las lecturas más antiguas que esto
+
+# --- Telegram ---
+# El token y el chat_id van SOLO en el archivo .env (que no se sube a GitHub).
+# Si faltan, el programa funciona igual, sin Telegram.
+load_dotenv(os.path.join(CARPETA_PROYECTO, ".env"))
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "").strip()
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+TIMEOUT_TELEGRAM_S = 5       # si Telegram no responde en este tiempo, se descarta el mensaje
+MAX_MENSAJES_PENDIENTES = 20 # sin Internet, no acumular mensajes sin límite
 
 # --- Hilos del controlador ---
 INTERVALO_MONITOR_S = 2.0            # lecturas de temperatura y uso normales
