@@ -86,7 +86,20 @@ PIBENCH_SIMULADO=1 python -m hardware.prueba_gpio  # en el portátil (simulado)
 
 En PowerShell, el modo simulado se activa con `$env:PIBENCH_SIMULADO = "1"`.
 
-_La aplicación completa (LEDs, web, Telegram) llegará en las fases siguientes._
+### Aplicación (controlador + proceso benchmark)
+
+```bash
+python main.py                       # en la Raspberry Pi
+PIBENCH_SIMULADO=1 python main.py    # en el portátil: teclas l (lanzar), p (nº procesos), q (salir)
+```
+
+- **Pulsador 1:** lanza el benchmark (secuencial, hilos y procesos con el N elegido).
+  El LED 1 parpadea durante el cálculo y se queda fijo al acabar.
+- **Pulsador 2:** cambia el nº de procesos (1 → 2 → 3 → 4 → 1); el LED 2 parpadea N veces.
+- Mientras hay un benchmark en curso, las pulsaciones se ignoran.
+- **Ctrl+C** cierra todo de forma ordenada: hilos, proceso benchmark y LEDs.
+
+_La web y Telegram llegarán en las fases siguientes._
 
 ## Tests
 

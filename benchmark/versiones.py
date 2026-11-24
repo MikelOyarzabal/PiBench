@@ -4,6 +4,7 @@ Las tres calculan exactamente la misma imagen y devuelven la misma lista de
 iteraciones; solo cambia cómo se reparte el trabajo.
 """
 
+import signal
 import time
 from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Pool
@@ -59,6 +60,11 @@ def con_hilos(ancho, alto, max_iter, n_hilos=config.HILOS):
         return _unir(partes)
 
 
+def _ignorar_ctrl_c():
+    """Los trabajadores del Pool ignoran Ctrl+C: el cierre lo organiza el programa principal."""
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
 def con_procesos(ancho, alto, max_iter, n_procesos):
     """Reparte los bloques entre varios procesos.
 
@@ -67,7 +73,7 @@ def con_procesos(ancho, alto, max_iter, n_procesos):
     que es un coste real del paralelismo con procesos.
     """
     tareas = _tareas(ancho, alto, max_iter, n_procesos)
-    with Pool(processes=n_procesos) as pool:
+    with Pool(processes=n_procesos, initializer=_ignorar_ctrl_c) as pool:
         partes = pool.starmap(calcular_filas, tareas)  # starmap mantiene el orden
     return _unir(partes)
 

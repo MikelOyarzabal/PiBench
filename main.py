@@ -1,0 +1,197 @@
+"""Proceso principal (controlador) de PiBench.
+
+Arranca el proceso benchmark y los hilos del controlador, y se encarga del
+cierre limpio con Ctrl+C.
+
+    Procesos:  controlador (este)  +  benchmark (benchmark_worker.py, con su Pool)
+    Hilos del controlador:  pulsadores, LEDs, monitor y resultados
+
+Uso:
+    python main.py                       # en la Raspberry Pi
+    PIBENCH_SIMULADO=1 python main.py    # en el portátil: teclas en lugar de pulsadores
+"""
+
+import logging
+import multiprocessing as mp
+import os
+import queue
+import sys
+import threading
+import time
+
+import config
+from benchmark.benchmark_worker import proceso_benchmark
+from estado import Estado
+from hardware import sensores
+from hardware.gpio import Hardware, simular_pulsacion
+from hardware.hilos import hilo_leds, hilo_monitor, hilo_pulsadores
+from registro import configurar_logging
+
+log = logging.getLogger("controlador")
+
+
+# --- Hilo resultados ---
+
+def procesar_resultado(estado, mensaje):
+    """Trata un mensaje que llega del proceso benchmark."""
+    tipo = mensaje["tipo"]
+
+    if tipo == "inicio":
+        with estado.lock:
+            estado.benchmark_en_curso = True  # por si la orden no vino de un pulsador
+
+    elif tipo == "version_inicio":
+        # Empieza una versión: apuntamos la temperatura inicial; el hilo monitor irá
+        # actualizando la máxima mientras dure.
+        temp = sensores.temp_cpu()
+        with estado.lock:
+            estado.medicion = {"temp_cpu_inicio": temp, "temp_cpu_max": temp,
+                               "throttling": bool(sensores.throttling())}
+
+    elif tipo == "ejecucion":
+        with estado.lock:
+            medicion = estado.medicion or {}
+            estado.medicion = None
+        ejecucion = {**mensaje, **medicion, "temp_ambiente": None}  # DHT20: fase 6
+        log.info("Resultado: %s n=%d  %.3f s  speedup %.2f  temp máx %s °C",
+                 ejecucion["version"], ejecucion["n_trabajadores"], ejecucion["tiempo_s"],
+                 ejecucion["speedup"], ejecucion.get("temp_cpu_max"))
+        # Fase 4: guardar en SQLite. Fase 7: avisar por Telegram.
+        return ejecucion
+
+    elif tipo == "fin":
+        with estado.lock:
+            estado.benchmark_en_curso = False
+            estado.hay_resultado = True
+        if mensaje["correcto"]:
+            log.info("Benchmark terminado; las imágenes coinciden. Imagen en %s", mensaje["imagen"])
+        else:
+            log.error("Benchmark terminado, pero alguna versión dio una imagen DISTINTA")
+
+    elif tipo in ("cancelado", "error"):
+        with estado.lock:
+            estado.benchmark_en_curso = False
+            estado.medicion = None
+        if tipo == "error":
+            log.error("Error en el benchmark: %s", mensaje["mensaje"])
+
+    return None
+
+
+def hilo_resultados(estado, cola_resultados, parar):
+    """Recibe los resultados del proceso benchmark."""
+    while not parar.is_set():
+        try:
+            mensaje = cola_resultados.get(timeout=0.5)
+        except queue.Empty:
+            continue
+        procesar_resultado(estado, mensaje)
+
+
+# --- Solo en modo simulado: el teclado hace de pulsadores ---
+
+def leer_tecla():
+    """Devuelve la tecla pulsada, o None si no hay ninguna. No se queda bloqueada.
+
+    No usamos input(): en Windows, un hilo bloqueado leyendo la entrada impide
+    crear procesos nuevos (el Pool del benchmark se quedaría esperando).
+    """
+    if os.name == "nt":
+        import msvcrt
+        return msvcrt.getwch() if msvcrt.kbhit() else None
+    import select
+    listo, _, _ = select.select([sys.stdin], [], [], 0)
+    return sys.stdin.readline().strip()[:1] if listo else None
+
+
+def hilo_teclado(hw, parar):
+    print("Modo simulado. Teclas: [l] lanzar benchmark, [p] cambiar nº de procesos, [q] salir"
+          " (en Linux, pulsa Enter después de la tecla)")
+    while not parar.is_set():
+        tecla = (leer_tecla() or "").lower()
+        if not tecla:
+            parar.wait(0.1)
+        elif tecla == "l":
+            simular_pulsacion(hw.pulsador_lanzar)
+        elif tecla == "p":
+            simular_pulsacion(hw.pulsador_procesos)
+        elif tecla == "q":
+            parar.set()
+
+
+# --- Arranque y cierre ---
+
+def main():
+    configurar_logging()
+
+    # 1) Proceso benchmark. Se crea antes que los hilos para que el proceso nuevo
+    #    no herede hilos a medias.
+    cola_ordenes = mp.Queue()
+    cola_resultados = mp.Queue()
+    parar_proceso = mp.Event()
+    proceso = mp.Process(target=proceso_benchmark, name="benchmark",
+                         args=(cola_ordenes, cola_resultados, parar_proceso))
+    proceso.start()
+
+    # 2) Hardware, estado compartido e hilos.
+    hw = Hardware()
+    estado = Estado()
+    parar = threading.Event()
+    cola_parpadeos = queue.Queue()
+    hilos = [
+        threading.Thread(target=hilo_pulsadores, name="pulsadores",
+                         args=(hw, estado, cola_ordenes, cola_parpadeos, parar)),
+        threading.Thread(target=hilo_leds, name="leds", args=(hw, estado, cola_parpadeos, parar)),
+        threading.Thread(target=hilo_monitor, name="monitor", args=(estado, parar)),
+        threading.Thread(target=hilo_resultados, name="resultados",
+                         args=(estado, cola_resultados, parar)),
+    ]
+    for hilo in hilos:
+        hilo.start()
+    if config.SIMULADO:
+        teclado = threading.Thread(target=hilo_teclado, name="teclado", args=(hw, parar))
+        teclado.start()
+        hilos.append(teclado)
+
+    log.info("PiBench en marcha (%d procesos). Ctrl+C para salir.", estado.n_procesos)
+
+    # 3) El hilo principal solo espera: a Ctrl+C, a la tecla q o a que muera el benchmark.
+    try:
+        while not parar.is_set():
+            if not proceso.is_alive():
+                log.error("El proceso benchmark ha terminado de forma inesperada")
+                break
+            time.sleep(0.5)
+    except KeyboardInterrupt:
+        log.info("Ctrl+C recibido")
+    finally:
+        cerrar(hw, hilos, parar, proceso, parar_proceso, cola_ordenes)
+
+
+def cerrar(hw, hilos, parar, proceso, parar_proceso, cola_ordenes):
+    """Cierre limpio: hilos, proceso benchmark y LEDs, en ese orden."""
+    log.info("Cerrando...")
+
+    parar.set()
+    for hilo in hilos:
+        hilo.join(timeout=2)
+        if hilo.is_alive():
+            log.warning("El hilo %s no ha terminado a tiempo", hilo.name)
+
+    # Avisamos al proceso benchmark de dos formas: el Event (por si está calculando,
+    # para que no empiece la siguiente versión) y la orden "salir" (por si está esperando).
+    parar_proceso.set()
+    cola_ordenes.put({"tipo": "salir"})
+    proceso.join(timeout=config.TIMEOUT_CIERRE_S)
+    if proceso.is_alive():
+        log.warning("El proceso benchmark no responde: se fuerza su cierre")
+        proceso.terminate()  # último recurso
+        proceso.join(timeout=2)
+    cola_ordenes.cancel_join_thread()  # no esperar a vaciar la cola al salir
+
+    hw.cerrar()
+    log.info("Todo cerrado. Hasta luego.")
+
+
+if __name__ == "__main__":
+    main()

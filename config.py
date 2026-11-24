@@ -36,3 +36,21 @@ HILOS = 4
 # Así el reparto es más equilibrado: las filas del centro del fractal cuestan
 # mucho más que las de los bordes.
 BLOQUES_POR_TRABAJADOR = 4
+
+# Nº de procesos que se puede elegir con el pulsador 2 (1 -> 2 -> ... -> MAX -> 1).
+MAX_PROCESOS = 4
+N_PROCESOS_INICIAL = 4
+
+# Dónde se guarda la última imagen del fractal.
+RUTA_IMAGEN = os.path.join("resultados", "mandelbrot.png")
+
+# --- Hilos del controlador ---
+INTERVALO_MONITOR_S = 2.0            # lecturas de temperatura y uso normales
+INTERVALO_MONITOR_BENCHMARK_S = 0.5  # más seguido durante un benchmark (para la temp. máxima)
+PARPADEO_S = 0.25                    # medio periodo del parpadeo del LED de estado
+PARPADEO_N_PROCESOS_S = 0.3          # parpadeos del LED 2 al elegir el nº de procesos
+
+# --- Cierre ---
+# Tiempo máximo que se espera al proceso benchmark antes de forzar su cierre.
+# Tiene que ser mayor que lo que tarda la versión más lenta (la secuencial).
+TIMEOUT_CIERRE_S = 15

@@ -251,8 +251,8 @@ En la Pi, crear el entorno virtual con `python3 -m venv --system-site-packages v
 - [x] Prueba real en la Pi: cada pulsador enciende su LED.
 
 ### Fase 3: Procesos e hilos
-- [ ] `benchmark_worker.py`: proceso que espera órdenes en `cola_ordenes` y devuelve resultados en `cola_resultados`.
-- [ ] Hilos de pulsadores, LEDs, monitor y resultados en el controlador.
+- [x] `benchmark_worker.py`: proceso que espera órdenes en `cola_ordenes` y devuelve resultados en `cola_resultados`.
+- [x] Hilos de pulsadores, LEDs, monitor y resultados en el controlador.
 - [ ] Pulsador 1 lanza el benchmark; el LED de estado parpadea durante el cálculo y se queda fijo al acabar.
 - [ ] Pulsador 2 cambia el nº de procesos (1→4) y el LED parpadea tantas veces como el número elegido.
 - [ ] Ignorar pulsaciones mientras hay un benchmark en curso.
