@@ -288,8 +288,8 @@ En la Pi, crear el entorno virtual con `python3 -m venv --system-site-packages v
 
 ### Fase 7: Bot de Telegram
 - [x] Crear el bot, guardar el token y el chat_id en `.env`.
-- [ ] Hilo notificador con cola; mensaje al terminar cada benchmark.
-- [ ] Probar sin Internet: el programa no se cuelga.
+- [x] Hilo notificador con cola; mensaje al terminar cada benchmark.
+- [x] Probar sin Internet: el programa no se cuelga.
 - [ ] Probar en la red de la universidad.
 
 ### Fase 8: Robustez y pulido

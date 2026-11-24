@@ -60,6 +60,7 @@ class NotificadorTelegram:
             log.warning("Telegram: respuesta %d: %s", respuesta.status_code,
                         self._ocultar(respuesta.text[:200]))
             return False
+        log.info("Telegram: mensaje enviado (%s)", texto.splitlines()[0])
         return True
 
     def _ocultar(self, texto):
