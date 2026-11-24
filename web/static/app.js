@@ -9,6 +9,7 @@ const fmt = (x, decimales = 1) => (x === null || x === undefined ? "—" : Numbe
 let graficas = {};          // se crean cuando Chart.js está cargado
 let ultimoBenchmark = null; // para saber cuándo hay resultados nuevos
 let enCursoAntes = false;
+let imagenMostrada;         // nº de benchmark de la imagen que se está viendo
 
 // ---------- Llamadas a la API ----------
 
@@ -79,9 +80,19 @@ async function actualizarEstado() {
     if (datos.ultimo_benchmark !== ultimoBenchmark || termino) {
       ultimoBenchmark = datos.ultimo_benchmark;
       actualizarEjecuciones();
-      if (termino || $("imagen-fractal").hidden) actualizarImagen();
     }
     enCursoAntes = datos.benchmark_en_curso;
+
+    // La imagen se recarga solo cuando hay una nueva (cambia su nº de benchmark).
+    const imagen = datos.imagen;
+    const idImagen = imagen ? imagen.id_benchmark : null;
+    if (idImagen !== imagenMostrada) {
+      imagenMostrada = idImagen;
+      if (imagen) actualizarImagen();
+    }
+    $("paleta").textContent = imagen && imagen.paleta
+      ? `Paleta: ${imagen.paleta}` + (imagen.id_benchmark ? ` · benchmark nº ${imagen.id_benchmark}` : "")
+      : "";
   } catch (e) {
     $("estado-benchmark").textContent = "Sin conexión";
     $("estado-benchmark").className = "etiqueta";

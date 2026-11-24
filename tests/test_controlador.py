@@ -45,9 +45,21 @@ def esperar(condicion, timeout=2.0):
 
 def test_pedir_benchmark():
     estado, cola = Estado(), queue.Queue()
+    estado.siguiente_id_benchmark = 7
     assert pedir_benchmark(estado, cola)
-    assert cola.get_nowait() == {"tipo": "lanzar", "n_procesos": 4}
+    assert cola.get_nowait() == {"tipo": "lanzar", "n_procesos": 4, "id_benchmark": 7}
     assert estado.benchmark_en_curso
+    assert estado.siguiente_id_benchmark == 8
+
+
+def test_cada_peticion_tiene_un_id_nuevo():
+    estado, cola = Estado(), queue.Queue()
+    ids = []
+    for _ in range(3):
+        pedir_benchmark(estado, cola)
+        ids.append(cola.get_nowait()["id_benchmark"])
+        estado.benchmark_en_curso = False  # como si hubiera terminado
+    assert ids == [1, 2, 3]
 
 
 def test_pulsacion_ignorada_si_hay_benchmark_en_curso():
@@ -75,13 +87,13 @@ def test_hilo_pulsadores(hw):
         simular_pulsacion(hw.pulsador_procesos, duracion=0)  # 4 -> 1
         assert parpadeos.get(timeout=2) == 1
         simular_pulsacion(hw.pulsador_lanzar, duracion=0)
-        assert ordenes.get(timeout=2) == {"tipo": "lanzar", "n_procesos": 1}
+        assert ordenes.get(timeout=2) == {"tipo": "lanzar", "n_procesos": 1, "id_benchmark": 1}
 
         # La web mete sus eventos en la misma cola: mismo efecto que el pulsador.
         with estado.lock:
             estado.benchmark_en_curso = False
         eventos.put({"accion": "barrido", "origen": "web"})
-        assert ordenes.get(timeout=2) == {"tipo": "barrido", "n_procesos": 1}
+        assert ordenes.get(timeout=2) == {"tipo": "barrido", "n_procesos": 1, "id_benchmark": 2}
     finally:
         parar.set()
         hilo.join(timeout=2)
@@ -116,14 +128,19 @@ def db(tmp_path):
     return base
 
 
-def mensaje_ejecucion(version):
-    return {"tipo": "ejecucion", "fecha": "2026-11-23T12:00:00", "version": version,
-            "n_trabajadores": 1, "tiempo_s": 7.5, "speedup": 1.0, "imagen_correcta": True}
+def mensaje_ejecucion(version, id_benchmark=1):
+    return {"tipo": "ejecucion", "id_benchmark": id_benchmark, "fecha": "2026-11-23T12:00:00",
+            "version": version, "n_trabajadores": 1, "tiempo_s": 7.5, "speedup": 1.0,
+            "imagen_correcta": True}
+
+
+def mensaje_inicio(id_benchmark=1):
+    return {"tipo": "inicio", "orden": "lanzar", "n_procesos": 4, "id_benchmark": id_benchmark}
 
 
 def test_procesar_resultados(db):
     estado = Estado()
-    procesar_resultado(estado, {"tipo": "inicio", "orden": "lanzar", "n_procesos": 4}, db)
+    procesar_resultado(estado, mensaje_inicio(), db)
     assert estado.benchmark_en_curso
     assert estado.id_benchmark == 1
 
@@ -148,9 +165,9 @@ def test_procesar_resultados(db):
 
 def test_cada_benchmark_tiene_su_id(db):
     estado = Estado()
-    for _ in range(2):
-        procesar_resultado(estado, {"tipo": "inicio", "orden": "lanzar", "n_procesos": 4}, db)
-        procesar_resultado(estado, mensaje_ejecucion("secuencial"), db)
+    for id_benchmark in (1, 2):
+        procesar_resultado(estado, mensaje_inicio(id_benchmark), db)
+        procesar_resultado(estado, mensaje_ejecucion("secuencial", id_benchmark), db)
         procesar_resultado(estado, {"tipo": "fin", "correcto": True, "imagen": "x.png"}, db)
     assert [e["id_benchmark"] for e in db.ultimas_ejecuciones()] == [2, 1]
 

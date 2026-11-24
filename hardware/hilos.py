@@ -24,8 +24,11 @@ def pedir_benchmark(estado, cola_ordenes, tipo="lanzar"):
             return False
         estado.benchmark_en_curso = True
         n = estado.n_procesos
-    log.info("Lanzando benchmark (%s) con %d procesos", tipo, n)
-    cola_ordenes.put({"tipo": tipo, "n_procesos": n})
+        # Cada benchmark lleva su nº: agrupa sus ejecuciones y decide la paleta de la imagen.
+        id_benchmark = estado.siguiente_id_benchmark
+        estado.siguiente_id_benchmark += 1
+    log.info("Lanzando benchmark nº %d (%s) con %d procesos", id_benchmark, tipo, n)
+    cola_ordenes.put({"tipo": tipo, "n_procesos": n, "id_benchmark": id_benchmark})
     return True
 
 

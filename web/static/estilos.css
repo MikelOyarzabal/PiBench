@@ -119,6 +119,7 @@ h3 { margin: 16px 0 8px; font-size: 0.9rem; color: var(--texto-2); font-weight: 
 .grafica { position: relative; height: 260px; }
 
 .fractal { width: 100%; height: auto; border-radius: 8px; display: block; }
+.pie-imagen { margin: 8px 0 0; font-size: 0.9rem; color: var(--texto-2); }
 
 /* Tabla */
 .tabla-contenedor { overflow-x: auto; }

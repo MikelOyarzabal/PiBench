@@ -4,6 +4,7 @@ import multiprocessing as mp
 import threading
 
 from benchmark.benchmark_worker import ejecutar_orden, proceso_benchmark
+from benchmark.mandelbrot import leer_info_png, paleta_para
 
 PEQUENO = {"ancho": 40, "alto": 30, "max_iter": 50}
 
@@ -28,6 +29,20 @@ def test_lanzar(tmp_path):
 
     assert mensajes[-1]["correcto"]
     assert (tmp_path / "img.png").exists()
+
+
+def test_id_y_paleta(tmp_path):
+    mensajes = ejecutar({"tipo": "lanzar", "id_benchmark": 2}, tmp_path)
+    assert mensajes[0]["id_benchmark"] == 2
+    assert all(m["id_benchmark"] == 2 for m in mensajes if m["tipo"] == "ejecucion")
+    assert mensajes[-1]["paleta"] == paleta_para(2)
+    assert leer_info_png(tmp_path / "img.png") == {"paleta": paleta_para(2), "id_benchmark": 2}
+
+
+def test_benchmarks_seguidos_cambian_de_paleta(tmp_path):
+    paletas = [ejecutar({"tipo": "lanzar", "n_procesos": 1, "id_benchmark": i}, tmp_path)[-1]["paleta"]
+               for i in (1, 2, 3)]
+    assert len(set(paletas)) == 3
 
 
 def test_barrido(tmp_path):

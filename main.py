@@ -40,10 +40,9 @@ def procesar_resultado(estado, mensaje, db):
     tipo = mensaje["tipo"]
 
     if tipo == "inicio":
-        id_benchmark = db.siguiente_id_benchmark()
         with estado.lock:
-            estado.benchmark_en_curso = True  # por si la orden no vino de un pulsador
-            estado.id_benchmark = id_benchmark
+            estado.benchmark_en_curso = True
+            estado.id_benchmark = mensaje["id_benchmark"]
 
     elif tipo == "version_inicio":
         # Empieza una versión: apuntamos la temperatura inicial; el hilo monitor irá
@@ -57,9 +56,7 @@ def procesar_resultado(estado, mensaje, db):
         with estado.lock:
             medicion = estado.medicion or {}
             estado.medicion = None
-            id_benchmark = estado.id_benchmark
-        ejecucion = {**mensaje, **medicion, "id_benchmark": id_benchmark,
-                     "temp_ambiente": None}  # DHT20: fase 6
+        ejecucion = {**mensaje, **medicion, "temp_ambiente": None}  # DHT20: fase 6
         log.info("Resultado: %s n=%d  %.3f s  speedup %.2f  temp máx %s °C",
                  ejecucion["version"], ejecucion["n_trabajadores"], ejecucion["tiempo_s"],
                  ejecucion["speedup"], ejecucion.get("temp_cpu_max"))
@@ -72,7 +69,8 @@ def procesar_resultado(estado, mensaje, db):
             estado.benchmark_en_curso = False
             estado.hay_resultado = True
         if mensaje["correcto"]:
-            log.info("Benchmark terminado; las imágenes coinciden. Imagen en %s", mensaje["imagen"])
+            log.info("Benchmark terminado; las imágenes coinciden. Imagen (paleta %s) en %s",
+                     mensaje.get("paleta"), mensaje["imagen"])
         else:
             log.error("Benchmark terminado, pero alguna versión dio una imagen DISTINTA")
 
@@ -144,6 +142,7 @@ def main():
     # 1) Procesos benchmark y web. Se crean antes que los hilos para que los
     #    procesos nuevos no hereden hilos a medias.
     estado = Estado()             # incluye la memoria compartida con la web
+    estado.siguiente_id_benchmark = db.siguiente_id_benchmark()  # sigue la numeración guardada
     cola_eventos = mp.Queue()     # pulsadores y web -> hilo pulsadores
     cola_ordenes = mp.Queue()     # controlador -> benchmark
     cola_resultados = mp.Queue()  # benchmark -> controlador

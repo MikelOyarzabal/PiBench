@@ -105,11 +105,14 @@ def test_lecturas(entorno):
     assert [l["temp_cpu"] for l in datos] == [50.0, 51.0]
 
 
-def test_imagen(entorno, tmp_path):
+def test_imagen_y_su_paleta(entorno):
     cliente, *_ = entorno
     assert cliente.get("/imagen").status_code == 404
+    assert cliente.get("/api/estado").get_json()["imagen"] is None
+
     from benchmark.mandelbrot import calcular_filas, guardar_png
-    guardar_png(calcular_filas(0, 6, 8, 6, 20), 8, 6, 20, config.RUTA_IMAGEN)
+    guardar_png(calcular_filas(0, 6, 8, 6, 20), 8, 6, 20, config.RUTA_IMAGEN, "Océano", 3)
     respuesta = cliente.get("/imagen")
     assert respuesta.status_code == 200
     assert respuesta.mimetype == "image/png"
+    assert cliente.get("/api/estado").get_json()["imagen"] == {"paleta": "Océano", "id_benchmark": 3}

@@ -4,8 +4,8 @@ Va en un proceso aparte porque pone la CPU al 100 %: si estuviera en el mismo
 proceso que los pulsadores o la web, los bloquearía.
 
 Comunicación (colas de multiprocessing):
-  cola_ordenes   (entrada):  {"tipo": "lanzar", "n_procesos": N}
-                             {"tipo": "barrido"}             -> procesos con N = 1..4
+  cola_ordenes   (entrada):  {"tipo": "lanzar", "n_procesos": N, "id_benchmark": id}
+                             {"tipo": "barrido", "id_benchmark": id}  -> procesos con N = 1..4
                              {"tipo": "salir"}
   cola_resultados (salida):  {"tipo": "inicio", ...}
                              {"tipo": "version_inicio", ...}  antes de cada versión
@@ -22,7 +22,7 @@ import sys
 from datetime import datetime
 
 import config
-from benchmark.mandelbrot import guardar_png
+from benchmark.mandelbrot import guardar_png, paleta_para
 from benchmark.versiones import con_hilos, con_procesos, medir, secuencial
 from registro import configurar_logging
 
@@ -48,6 +48,8 @@ def ejecutar_orden(orden, enviar, parar):
     max_iter = orden.get("max_iter", config.MAX_ITER)
     ruta_imagen = orden.get("ruta_imagen", config.RUTA_IMAGEN)
     n_procesos = orden.get("n_procesos", config.MAX_PROCESOS)
+    id_benchmark = orden.get("id_benchmark", 1)  # lo asigna el controlador al pedir el benchmark
+    paleta = paleta_para(id_benchmark)
 
     # Siempre secuencial (la referencia del speedup) y con hilos; luego, procesos.
     pruebas = [("secuencial", 1), ("hilos", config.HILOS)]
@@ -58,8 +60,9 @@ def ejecutar_orden(orden, enviar, parar):
     else:
         raise ValueError(f"Orden desconocida: {orden['tipo']}")
 
-    log.info("Empieza el benchmark (%s, %d procesos)", orden["tipo"], n_procesos)
-    enviar({"tipo": "inicio", "orden": orden["tipo"], "n_procesos": n_procesos})
+    log.info("Empieza el benchmark nº %d (%s, %d procesos)", id_benchmark, orden["tipo"], n_procesos)
+    enviar({"tipo": "inicio", "orden": orden["tipo"], "n_procesos": n_procesos,
+            "id_benchmark": id_benchmark})
 
     referencia = None
     t_secuencial = None
@@ -75,12 +78,15 @@ def ejecutar_orden(orden, enviar, parar):
 
         if referencia is None:  # la primera es la secuencial
             referencia, t_secuencial = imagen, t
+        # Se comparan las listas de iteraciones (el resultado del cálculo), no los
+        # colores: el color se pone después y no depende de la versión.
         igual = imagen == referencia
         correcto = correcto and igual
 
         log.info("%-10s n=%d  %.3f s  speedup %.2f", version, n, t, t_secuencial / t)
         enviar({
             "tipo": "ejecucion",
+            "id_benchmark": id_benchmark,
             "fecha": datetime.now().isoformat(timespec="seconds"),
             "version": version,
             "n_trabajadores": n,
@@ -89,8 +95,8 @@ def ejecutar_orden(orden, enviar, parar):
             "imagen_correcta": igual,
         })
 
-    guardar_png(referencia, ancho, alto, max_iter, ruta_imagen)
-    enviar({"tipo": "fin", "correcto": correcto, "imagen": ruta_imagen})
+    guardar_png(referencia, ancho, alto, max_iter, ruta_imagen, paleta, id_benchmark)
+    enviar({"tipo": "fin", "correcto": correcto, "imagen": ruta_imagen, "paleta": paleta})
 
 
 def _terminar_por_sigterm(signum, frame):

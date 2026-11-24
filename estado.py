@@ -25,6 +25,7 @@ class Estado:
 
         # Benchmark
         self.id_benchmark = None            # nº del benchmark en curso (agrupa sus ejecuciones)
+        self.siguiente_id_benchmark = 1     # el controlador lo pone al arrancar (desde SQLite)
         self.hay_resultado = False          # para dejar el LED de estado fijo al acabar
 
         # Últimas lecturas del hilo monitor

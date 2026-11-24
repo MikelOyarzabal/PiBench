@@ -9,7 +9,7 @@ Cómo se comunica con el controlador:
     la misma cola que usan los pulsadores físicos.
 
 API:
-  GET  /api/estado               estado actual + última lectura de sensores
+  GET  /api/estado               estado actual, última lectura de sensores y paleta de la imagen
   GET  /api/ejecuciones?limite=N histórico de ejecuciones (más recientes primero)
   GET  /api/lecturas?minutos=N   lecturas de los últimos N minutos
   POST /api/lanzar               lanza el benchmark con el nº de procesos elegido
@@ -25,6 +25,7 @@ import signal
 from flask import Flask, jsonify, render_template, request, send_file
 
 import config
+from benchmark.mandelbrot import leer_info_png
 from datos.db import BaseDatos
 from registro import configurar_logging
 
@@ -63,6 +64,7 @@ def crear_app(db, cola_eventos, en_curso, n_procesos):
             simulado=config.SIMULADO,
             lectura=db.ultima_lectura(),
             ultimo_benchmark=ultimas[0]["id_benchmark"] if ultimas else None,
+            imagen=leer_info_png(config.RUTA_IMAGEN),  # {"paleta", "id_benchmark"} o None
         )
 
     @app.get("/api/ejecuciones")
