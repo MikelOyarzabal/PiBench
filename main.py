@@ -16,6 +16,7 @@ import logging
 import multiprocessing as mp
 import os
 import queue
+import socket
 import sys
 import threading
 import time
@@ -177,7 +178,7 @@ def main():
         hilos.append(teclado)
 
     log.info("PiBench en marcha (%d procesos). Web: http://%s:%d  Ctrl+C para salir.",
-             estado.n_procesos, "localhost" if config.SIMULADO else "<ip-de-la-pi>",
+             estado.n_procesos, "localhost" if config.SIMULADO else socket.gethostname() + ".local",
              config.PUERTO_WEB)
 
     # 3) El hilo principal solo espera: a Ctrl+C, a la tecla q o a que muera el benchmark.

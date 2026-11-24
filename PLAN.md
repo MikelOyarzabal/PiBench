@@ -282,9 +282,9 @@ En la Pi, crear el entorno virtual con `python3 -m venv --system-site-packages v
 
 ### Fase 6: Sensor de ambiente (DHT11)
 - [x] Conectar (SIG a GPIO4, VCC a GPIO5), activar `dtoverlay=dht11,gpiopin=4` y comprobar la lectura en `/sys/bus/iio/devices/`.
-- [ ] Leer temperatura y humedad en el hilo monitor; si el sensor falla, seguir funcionando sin él.
-- [ ] Mostrar la temperatura ambiente junto a la de la CPU en la web.
-- [ ] LED de alerta cuando la temperatura de la CPU pase del umbral (`config.py`, por ejemplo 75 °C).
+- [x] Leer temperatura y humedad en el hilo monitor; si el sensor falla, seguir funcionando sin él.
+- [x] Mostrar la temperatura ambiente junto a la de la CPU en la web.
+- [x] LED de alerta cuando la temperatura de la CPU pase del umbral (`config.py`, por ejemplo 75 °C).
 
 ### Fase 7: Bot de Telegram
 - [ ] Crear el bot, guardar el token y el chat_id en `.env`.
