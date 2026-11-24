@@ -271,7 +271,7 @@ En la Pi, crear el entorno virtual con `python3 -m venv --system-site-packages v
 ### Fase 5: Web
 - [x] Flask en su propio proceso, con la API de la sección 6.
 - [x] Dashboard con estado en tiempo real, botones, gráficas (Chart.js), tabla e imagen del fractal.
-- [ ] Lanzar el benchmark desde la web funciona igual que desde el pulsador.
+- [x] Lanzar el benchmark desde la web funciona igual que desde el pulsador.
 
 ### Fase 6: Sensor DHT20
 - [ ] Conectar por I2C y comprobar con `i2cdetect -y 1`.
