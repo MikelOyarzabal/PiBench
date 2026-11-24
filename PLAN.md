@@ -43,27 +43,33 @@ Aplicación en Python para una **Raspberry Pi 5** que mide cuánto se gana al pa
 | Raspberry Pi 5 (4 GB) + fuente oficial de 27 W | Ejecuta todo | — |
 | Grove LED-pulsador 1 | LED de **estado** del benchmark + pulsador para **lanzar** el benchmark | Cable Grove a dupont, directo a GPIO |
 | Grove LED-pulsador 2 | LED de **alerta** de temperatura + pulsador para **elegir nº de procesos** (1→2→3→4) | Cable Grove a dupont, directo a GPIO |
-| Grove Temperature & Humidity Sensor V2.0 (**DHT20**, I2C, dirección `0x38`) | Temperatura y humedad del ambiente | Cable Grove a dupont, pines I2C: SDA = GPIO2 (pin 3), SCL = GPIO3 (pin 5) |
+| Grove Temperature & Humidity Sensor **v1.2 (DHT11)**, un solo hilo de datos (no I2C) | Temperatura y humedad del ambiente | Cable Grove a dupont: SIG a GPIO4, VCC a GPIO5 (ver abajo) |
 | Tarjeta microSD (≥ 16 GB) | Raspberry Pi OS | — |
 
-**Pines GPIO propuestos** (todos configurables en `config.py`; comprobar en la wiki de Seeed qué hilo del
-cable Grove es el LED y cuál el botón en el módulo LED-pulsador):
+> **Cambio respecto a la propuesta:** el plan contaba con un DHT20 (I2C), pero nos dieron el sensor
+> Grove v1.2, que lleva un **DHT11** (pines GND, VCC, NC, SIG). Se lee con el controlador `dht11` del
+> sistema (`dtoverlay=dht11,gpiopin=4` en `/boot/firmware/config.txt`), que deja los valores en
+> `/sys/bus/iio/devices/`. Los dos pines de 3,3 V los usan los pulsadores, así que el sensor se
+> alimenta desde **GPIO5 a nivel alto** (consume < 2,5 mA).
 
-| Señal | GPIO |
-|---|---|
-| LED estado | GPIO17 |
-| Pulsador lanzar | GPIO27 |
-| LED alerta | GPIO22 |
-| Pulsador nº procesos | GPIO23 |
+**Pines GPIO** (confirmados en la Pi; configurables en `config.py`):
+
+| Señal | GPIO | Pin físico |
+|---|---|---|
+| LED estado | GPIO17 | 11 |
+| Pulsador lanzar | GPIO27 | 13 |
+| LED alerta | GPIO22 | 15 |
+| Pulsador nº procesos | GPIO23 | 16 |
+| DHT11 SIG (datos) | GPIO4 | 7 |
+| DHT11 VCC (alimentación) | GPIO5 | 29 |
 
 **Avisos importantes de la Raspberry Pi 5:**
 - **No usar `RPi.GPIO`** (no funciona en la Pi 5). Usar **`gpiozero`** (con `lgpio` por debajo),
   que viene con Raspberry Pi OS.
-- Activar I2C: `sudo raspi-config` → Interface Options → I2C. Comprobar el sensor con `i2cdetect -y 1` (debe salir `38`).
 - La Pi 5 **se calienta** con los 4 núcleos al 100 % y baja la frecuencia (*throttling*) hacia 85 °C.
   Lo medimos y lo usamos en la defensa (afecta al speedup).
-- Si el DHT20 da problemas, el DHT20 es compatible con el AHT20: probar la librería `adafruit-circuitpython-ahtx0`
-  o leerlo directamente con `smbus2`.
+- El DHT11 falla de vez en cuando (su protocolo depende de tiempos muy precisos, peor con la CPU al 100 %):
+  si una lectura falla se usa la anterior durante unos segundos, y si no hay sensor el programa sigue sin él.
 
 ---
 
@@ -221,7 +227,8 @@ pibench/
     └── test_gpio_mock.py     # LEDs y pulsadores con MockFactory
 ```
 
-**Dependencias:** `flask`, `psutil`, `pillow`, `requests`, `python-dotenv`, `smbus2` (o `adafruit-circuitpython-ahtx0`), `pytest`.
+**Dependencias:** `flask`, `psutil`, `pillow`, `requests`, `python-dotenv`, `pytest`
+(el DHT11 lo lee el controlador del sistema: no necesita librería).
 En la Pi, crear el entorno virtual con `python3 -m venv --system-site-packages venv` para poder usar el `gpiozero` y el `lgpio` del sistema.
 
 ---
@@ -230,7 +237,7 @@ En la Pi, crear el entorno virtual con `python3 -m venv --system-site-packages v
 
 - Variable de entorno `PIBENCH_SIMULADO=1`:
   - `gpiozero` con `GPIOZERO_PIN_FACTORY=mock` (LEDs y pulsadores simulados);
-  - el sensor DHT20 devuelve valores inventados;
+  - el sensor de ambiente (DHT11) devuelve valores inventados;
   - la temperatura de la CPU se lee con `psutil` si existe, o se simula.
 - En modo simulado, la web permite "pulsar" los botones, para probar todo en el portátil.
 
@@ -273,8 +280,8 @@ En la Pi, crear el entorno virtual con `python3 -m venv --system-site-packages v
 - [x] Dashboard con estado en tiempo real, botones, gráficas (Chart.js), tabla e imagen del fractal.
 - [x] Lanzar el benchmark desde la web funciona igual que desde el pulsador.
 
-### Fase 6: Sensor DHT20
-- [ ] Conectar por I2C y comprobar con `i2cdetect -y 1`.
+### Fase 6: Sensor de ambiente (DHT11)
+- [x] Conectar (SIG a GPIO4, VCC a GPIO5), activar `dtoverlay=dht11,gpiopin=4` y comprobar la lectura en `/sys/bus/iio/devices/`.
 - [ ] Leer temperatura y humedad en el hilo monitor; si el sensor falla, seguir funcionando sin él.
 - [ ] Mostrar la temperatura ambiente junto a la de la CPU en la web.
 - [ ] LED de alerta cuando la temperatura de la CPU pase del umbral (`config.py`, por ejemplo 75 °C).

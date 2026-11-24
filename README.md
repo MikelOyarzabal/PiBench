@@ -12,7 +12,7 @@ muestran con LEDs, una web en tiempo real (Flask) y un bot de Telegram.
 
 - Raspberry Pi 5 (4 GB) con fuente oficial de 27 W.
 - 2 × Grove LED-pulsador.
-- Grove Temperature & Humidity Sensor V2.0 (DHT20, I2C, dirección `0x38`).
+- Grove Temperature & Humidity Sensor v1.2 (DHT11: pines GND, VCC, NC, SIG).
 
 Módulos Grove "Red LED Button v1.0": hilo **amarillo = LED**, **blanco = pulsador**
 (activo a nivel bajo), rojo = VCC, negro = GND.
@@ -27,20 +27,27 @@ Módulos Grove "Red LED Button v1.0": hilo **amarillo = LED**, **blanco = pulsad
 | 2 | LED alerta | GPIO22 | 15 |
 | 2 | Pulsador nº procesos | GPIO23 | 16 |
 | 2 | VCC / GND | 3,3 V / GND | 17 / 9 |
-| DHT20 | SDA / SCL | GPIO2 / GPIO3 | 3 / 5 |
+| Sensor | SIG (datos) | GPIO4 | 7 |
+| Sensor | VCC / GND | GPIO5 a nivel alto / GND | 29 / 14 |
 
-Los pines se cambian en `config.py`.
+El sensor se alimenta desde GPIO5 (el programa lo pone a 3,3 V al arrancar) porque los dos pines
+de 3,3 V ya los usan los pulsadores; su hilo blanco (NC) no se conecta. Los pines se cambian en `config.py`.
 
 ## Preparar la Raspberry Pi
 
 1. Instalar **Raspberry Pi OS** (64 bits) con Raspberry Pi Imager. En los ajustes del Imager,
    activar **SSH** y configurar usuario, contraseña y Wi-Fi.
-2. Activar **I2C**: `sudo raspi-config` → *Interface Options* → *I2C* → *Yes*.
-3. Comprobar el sensor (cuando esté conectado):
+2. Activar el controlador del sensor DHT11 y reiniciar:
 
    ```bash
-   sudo apt install -y i2c-tools
-   i2cdetect -y 1        # debe aparecer 38
+   echo "dtoverlay=dht11,gpiopin=4" | sudo tee -a /boot/firmware/config.txt
+   sudo reboot
+   ```
+
+3. Comprobar el sensor (con el proyecto instalado):
+
+   ```bash
+   python -m hardware.sensores   # enciende el sensor y muestra 10 lecturas
    ```
 
 ## Instalación

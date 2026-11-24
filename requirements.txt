@@ -7,5 +7,4 @@ psutil>=5.9
 pillow>=10.0
 requests>=2.31
 python-dotenv>=1.0
-smbus2>=0.4
 pytest>=8.0

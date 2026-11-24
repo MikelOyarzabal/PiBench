@@ -6,6 +6,8 @@ const color = (nombre) => getComputedStyle(document.documentElement).getProperty
 const NOMBRES = { secuencial: "Secuencial", hilos: "Hilos", procesos: "Procesos" };
 const fmt = (x, decimales = 1) => (x === null || x === undefined ? "—" : Number(x).toFixed(decimales));
 
+const UMBRAL = Number(document.body.dataset.umbral); // °C de la alerta (config.py)
+
 let graficas = {};          // se crean cuando Chart.js está cargado
 let ultimoBenchmark = null; // para saber cuándo hay resultados nuevos
 let enCursoAntes = false;
@@ -48,7 +50,7 @@ function pintarSensores(lectura) {
   $("hora-lectura").textContent = "· " + lectura.fecha.slice(11);
   const temp = $("temp-cpu");
   temp.textContent = fmt(lectura.temp_cpu) + " °C";
-  temp.classList.toggle("caliente", lectura.temp_cpu >= 75);
+  temp.classList.toggle("caliente", lectura.temp_cpu >= UMBRAL);
   $("temp-ambiente").textContent = lectura.temp_ambiente === null ? "sin sensor" : fmt(lectura.temp_ambiente) + " °C";
   $("humedad").textContent = lectura.humedad === null ? "sin sensor" : fmt(lectura.humedad, 0) + " %";
 
@@ -110,10 +112,13 @@ function crearGraficas() {
 
   graficas.temp = new Chart($("grafica-temp"), {
     type: "line",
-    data: { labels: [], datasets: [{ label: "CPU (°C)", data: [], borderColor: color("--serie-1"),
-                                     borderWidth: 2, pointRadius: 0, tension: 0.2 }] },
+    data: { labels: [], datasets: [
+      { label: "CPU (°C)", data: [], borderColor: color("--serie-1"), backgroundColor: color("--serie-1"),
+        borderWidth: 2, pointRadius: 0, tension: 0.2 },
+      { label: "Ambiente (°C)", data: [], borderColor: color("--serie-2"), backgroundColor: color("--serie-2"),
+        borderWidth: 2, pointRadius: 0, tension: 0.2, spanGaps: true },
+    ] },
     options: { ...sinAnimacion, interaction: { mode: "index", intersect: false },
-               plugins: { legend: { display: false } },
                scales: { x: { ticks: { maxTicksLimit: 8 } }, y: { title: { display: true, text: "°C" } } } },
   });
 
@@ -147,6 +152,7 @@ async function actualizarLecturas() {
     const { datos } = await pedir("/api/lecturas?minutos=10");
     graficas.temp.data.labels = datos.map((l) => l.fecha.slice(11));
     graficas.temp.data.datasets[0].data = datos.map((l) => l.temp_cpu);
+    graficas.temp.data.datasets[1].data = datos.map((l) => l.temp_ambiente);
     graficas.temp.update();
   } catch (e) { /* se reintenta en el siguiente ciclo */ }
 }
@@ -162,7 +168,8 @@ function pintarTabla(ejecuciones) {
       <td>${e.id_benchmark}</td><td>${e.fecha.replace("T", " ")}</td><td>${NOMBRES[e.version]}</td>
       <td class="num">${e.n_trabajadores}</td><td class="num">${fmt(e.tiempo_s, 3)}</td>
       <td class="num">${fmt(e.speedup, 2)}</td><td class="num">${fmt(e.temp_cpu_inicio)} °C</td>
-      <td class="num">${fmt(e.temp_cpu_max)} °C</td><td>${thr}</td></tr>`;
+      <td class="num">${fmt(e.temp_cpu_max)} °C</td>
+      <td class="num">${e.temp_ambiente === null ? "—" : fmt(e.temp_ambiente) + " °C"}</td><td>${thr}</td></tr>`;
   }).join("");
 }
 

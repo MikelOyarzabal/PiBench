@@ -6,7 +6,7 @@
   <title>PiBench</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
 </head>
-<body>
+<body data-umbral="{{ umbral }}">
   <header class="cabecera">
     <div>
       <h1>PiBench</h1>
@@ -55,8 +55,9 @@
 
     <!-- Gráfica: temperatura -->
     <section class="tarjeta ancha">
-      <h2>Temperatura de la CPU (últimos 10 min)</h2>
-      <div class="grafica"><canvas id="grafica-temp" aria-label="Temperatura de la CPU en los últimos 10 minutos"></canvas></div>
+      <h2>Temperatura (últimos 10 min)</h2>
+      <div class="grafica"><canvas id="grafica-temp" aria-label="Temperatura de la CPU y ambiente en los últimos 10 minutos"></canvas></div>
+      <p class="ayuda">LED de alerta: se enciende con la CPU a {{ umbral|round|int }} °C o más.</p>
     </section>
 
     <!-- Gráficas: tiempos y speedup -->
@@ -88,11 +89,12 @@
             <tr>
               <th>Bench.</th><th>Fecha</th><th>Versión</th><th class="num">Trab.</th>
               <th class="num">Tiempo (s)</th><th class="num">Speedup</th>
-              <th class="num">T. inicio</th><th class="num">T. máx</th><th>Throttling</th>
+              <th class="num">T. inicio</th><th class="num">T. máx</th><th class="num">T. ambiente</th>
+              <th>Throttling</th>
             </tr>
           </thead>
           <tbody id="tabla-ejecuciones">
-            <tr><td colspan="9" class="secundario">Sin ejecuciones todavía.</td></tr>
+            <tr><td colspan="10" class="secundario">Sin ejecuciones todavía.</td></tr>
           </tbody>
         </table>
       </div>

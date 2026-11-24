@@ -7,7 +7,7 @@ que todo esto funciona también en un portátil.
 
 import time
 
-from gpiozero import LED, Button, Device
+from gpiozero import LED, Button, Device, DigitalOutputDevice
 from gpiozero.pins.mock import MockFactory
 
 import config
@@ -20,11 +20,18 @@ def activar_modo_simulado():
 
 
 class Hardware:
-    """Los 2 LEDs y los 2 pulsadores del proyecto."""
+    """Los 2 LEDs, los 2 pulsadores y la alimentación del sensor de ambiente."""
 
     def __init__(self):
         if config.SIMULADO:
             activar_modo_simulado()
+
+        # Alimentación del sensor DHT11 desde un GPIO a nivel alto (ver config.py).
+        # Se enciende lo primero para que el sensor tenga tiempo de arrancar.
+        self.alimentacion_sensor = None
+        if config.PIN_ALIMENTACION_DHT is not None:
+            self.alimentacion_sensor = DigitalOutputDevice(config.PIN_ALIMENTACION_DHT,
+                                                           initial_value=True)
 
         self.led_estado = LED(config.PIN_LED_ESTADO)
         self.led_alerta = LED(config.PIN_LED_ALERTA)
@@ -44,8 +51,10 @@ class Hardware:
         """Apaga los LEDs y libera los pines. Llamar siempre al terminar."""
         self.apagar_leds()
         for dispositivo in (self.led_estado, self.led_alerta,
-                            self.pulsador_lanzar, self.pulsador_procesos):
-            dispositivo.close()
+                            self.pulsador_lanzar, self.pulsador_procesos,
+                            self.alimentacion_sensor):
+            if dispositivo is not None:
+                dispositivo.close()
 
 
 def simular_pulsacion(pulsador, duracion=0.1):

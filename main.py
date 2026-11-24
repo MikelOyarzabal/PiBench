@@ -50,13 +50,14 @@ def procesar_resultado(estado, mensaje, db):
         temp = sensores.temp_cpu()
         with estado.lock:
             estado.medicion = {"temp_cpu_inicio": temp, "temp_cpu_max": temp,
-                               "throttling": bool(sensores.throttling())}
+                               "throttling": bool(sensores.throttling()),
+                               "temp_ambiente": estado.temp_ambiente}  # última del monitor
 
     elif tipo == "ejecucion":
         with estado.lock:
             medicion = estado.medicion or {}
             estado.medicion = None
-        ejecucion = {**mensaje, **medicion, "temp_ambiente": None}  # DHT20: fase 6
+        ejecucion = {**mensaje, **medicion}
         log.info("Resultado: %s n=%d  %.3f s  speedup %.2f  temp máx %s °C",
                  ejecucion["version"], ejecucion["n_trabajadores"], ejecucion["tiempo_s"],
                  ejecucion["speedup"], ejecucion.get("temp_cpu_max"))

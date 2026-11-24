@@ -7,6 +7,7 @@ su bucle y acaban. Así el cierre es limpio.
 import logging
 import queue
 import sqlite3
+import time
 
 import config
 from hardware import sensores
@@ -79,12 +80,15 @@ def hilo_pulsadores(hw, estado, cola_eventos, cola_ordenes, cola_parpadeos, para
 
 def hilo_leds(hw, estado, cola_parpadeos, parar):
     """LED de estado: parpadea durante el benchmark y se queda fijo al acabar.
-    LED 2: parpadea tantas veces como el nº de procesos elegido.
+    LED 2 (alerta): encendido si la CPU está demasiado caliente. Al elegir el nº de
+    procesos parpadea N veces, y después vuelve a mostrar la alerta.
     """
+    fin_parpadeo = 0.0  # hasta cuándo el LED 2 está ocupado parpadeando
     while not parar.is_set():
         with estado.lock:
             en_curso = estado.benchmark_en_curso
             hay_resultado = estado.hay_resultado
+            alerta = estado.alerta_temp
 
         if en_curso:
             hw.led_estado.toggle()
@@ -98,23 +102,47 @@ def hilo_leds(hw, estado, cola_parpadeos, parar):
             # background=True: gpiozero hace el parpadeo sin bloquear este hilo.
             hw.led_alerta.blink(on_time=config.PARPADEO_N_PROCESOS_S,
                                 off_time=config.PARPADEO_N_PROCESOS_S, n=n, background=True)
+            fin_parpadeo = time.monotonic() + n * 2 * config.PARPADEO_N_PROCESOS_S
         except queue.Empty:
-            pass
+            if time.monotonic() >= fin_parpadeo:  # no cortar un parpadeo a medias
+                hw.led_alerta.value = alerta
 
         parar.wait(config.PARPADEO_S)
 
 
-def hilo_monitor(estado, db, parar):
-    """Lee la temperatura, el uso de cada núcleo y el throttling cada pocos segundos,
-    y lo guarda en la base de datos.
+def actualizar_alerta(activa, temp):
+    """Decide si la alerta de temperatura debe estar activa, con histéresis.
+
+    Se activa al llegar al umbral y no se desactiva hasta bajar HISTERESIS grados
+    por debajo. Sin histéresis, con la temperatura rondando el umbral, el LED
+    se encendería y apagaría continuamente.
     """
+    if temp is None:
+        return activa
+    if not activa and temp >= config.UMBRAL_TEMP_CPU:
+        return True
+    if activa and temp < config.UMBRAL_TEMP_CPU - config.HISTERESIS_TEMP:
+        return False
+    return activa
+
+
+def hilo_monitor(estado, db, parar):
+    """Cada pocos segundos lee la temperatura de la CPU, el uso de cada núcleo, el
+    throttling y la temperatura y humedad ambiente; lo guarda en la base de datos y
+    decide si hay que activar la alerta de temperatura.
+    """
+    sensor_ambiente = sensores.SensorAmbiente()
+    if not sensor_ambiente.disponible:
+        log.warning("Sensor de ambiente (DHT11) no encontrado: se sigue sin él")
+
     while not parar.is_set():
         temp = sensores.temp_cpu()
         uso = sensores.uso_cpu()
         throttling = sensores.throttling()
+        temp_ambiente, humedad = sensor_ambiente.leer()
 
         try:
-            db.guardar_lectura(temp, uso)  # temp. ambiente y humedad: fase 6
+            db.guardar_lectura(temp, uso, temp_ambiente, humedad)
         except sqlite3.Error as e:
             log.warning("No se pudo guardar la lectura: %s", e)  # seguimos sin ella
 
@@ -122,6 +150,11 @@ def hilo_monitor(estado, db, parar):
             estado.temp_cpu = temp
             estado.uso_cpu = uso
             estado.throttling = throttling
+            estado.temp_ambiente = temp_ambiente
+            estado.humedad = humedad
+            alerta_antes = estado.alerta_temp
+            alerta = actualizar_alerta(alerta_antes, temp)
+            estado.alerta_temp = alerta
             # Si hay una versión del benchmark en marcha, guardamos su temperatura máxima.
             if estado.medicion is not None:
                 estado.medicion["temp_cpu_max"] = max(estado.medicion["temp_cpu_max"], temp)
@@ -129,5 +162,12 @@ def hilo_monitor(estado, db, parar):
                     estado.medicion["throttling"] = True
             en_curso = estado.benchmark_en_curso
 
-        log.debug("CPU %.1f °C, uso %s, throttling %s", temp, uso, throttling)
+        if alerta != alerta_antes:
+            if alerta:
+                log.warning("¡Alerta! CPU a %.1f °C (umbral %.0f °C)", temp, config.UMBRAL_TEMP_CPU)
+            else:
+                log.info("Fin de la alerta: CPU a %.1f °C", temp)
+
+        log.debug("CPU %.1f °C, uso %s, throttling %s, ambiente %s °C, humedad %s %%",
+                  temp, uso, throttling, temp_ambiente, humedad)
         parar.wait(config.INTERVALO_MONITOR_BENCHMARK_S if en_curso else config.INTERVALO_MONITOR_S)

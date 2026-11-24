@@ -144,6 +144,7 @@ def test_procesar_resultados(db):
     assert estado.benchmark_en_curso
     assert estado.id_benchmark == 1
 
+    estado.temp_ambiente = 23.0  # última lectura del DHT11
     procesar_resultado(estado, {"tipo": "version_inicio", "version": "secuencial",
                                 "n_trabajadores": 1}, db)
     assert estado.medicion is not None
@@ -161,6 +162,7 @@ def test_procesar_resultados(db):
     # Se ha guardado en la base de datos, con su temperatura máxima.
     [fila] = db.ultimas_ejecuciones()
     assert (fila["id_benchmark"], fila["version"], fila["temp_cpu_max"]) == (1, "secuencial", 99.0)
+    assert fila["temp_ambiente"] == 23.0
 
 
 def test_cada_benchmark_tiene_su_id(db):

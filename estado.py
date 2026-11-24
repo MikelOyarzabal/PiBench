@@ -32,6 +32,9 @@ class Estado:
         self.temp_cpu = None
         self.uso_cpu = []
         self.throttling = None
+        self.temp_ambiente = None           # None si no hay sensor o falla
+        self.humedad = None
+        self.alerta_temp = False            # CPU por encima del umbral -> LED 2 encendido
 
         # Medidas de la versión que se está ejecutando ahora mismo:
         # {"temp_cpu_inicio": .., "temp_cpu_max": .., "throttling": ..} o None.

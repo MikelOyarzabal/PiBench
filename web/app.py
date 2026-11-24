@@ -54,7 +54,8 @@ def crear_app(db, cola_eventos, en_curso, n_procesos):
     @app.get("/")
     def inicio():
         return render_template("index.html", simulado=config.SIMULADO,
-                               max_procesos=config.MAX_PROCESOS)
+                               max_procesos=config.MAX_PROCESOS,
+                               umbral=config.UMBRAL_TEMP_CPU)
 
     @app.get("/api/estado")
     def api_estado():

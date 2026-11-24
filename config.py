@@ -21,6 +21,20 @@ PIN_PULSADOR_PROCESOS = 23  # pin físico 16 - módulo 2
 # Tiempo antirrebote de los pulsadores (segundos).
 ANTIRREBOTE_S = 0.05
 
+# --- Sensor de temperatura y humedad ambiente (Grove v1.2, DHT11) ---
+# Lo lee el controlador dht11 del sistema: en /boot/firmware/config.txt
+#   dtoverlay=dht11,gpiopin=4
+# y los valores aparecen en /sys/bus/iio/devices/iio:deviceN/.
+PIN_DHT = 4                  # pin físico 7 (solo informativo: lo fija el dtoverlay)
+# Los dos pines de 3,3 V los usan los pulsadores, así que el sensor se alimenta
+# desde un GPIO puesto a nivel alto (consume menos de 2,5 mA). None si va a 3,3 V.
+PIN_ALIMENTACION_DHT = 5     # pin físico 29
+VALIDEZ_DHT_S = 10           # si una lectura falla, se usa la anterior durante este tiempo
+
+# --- Alerta de temperatura de la CPU (LED 2) ---
+UMBRAL_TEMP_CPU = 75.0       # °C: se enciende el LED de alerta
+HISTERESIS_TEMP = 3.0        # se apaga al bajar de UMBRAL - HISTERESIS (evita parpadeos)
+
 # --- Benchmark (fractal de Mandelbrot) ---
 # Tamaño de la imagen y nº máximo de iteraciones por píxel.
 # Ajustar en la Pi para que la versión secuencial tarde unos 5-10 s.
