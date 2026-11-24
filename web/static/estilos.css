@@ -1,0 +1,129 @@
+/* Colores como variables: el modo oscuro solo cambia estos valores. */
+:root {
+  color-scheme: light;
+  --fondo: #f9f9f7;
+  --superficie: #fcfcfb;
+  --texto: #0b0b0b;
+  --texto-2: #52514e;
+  --texto-suave: #898781;
+  --borde: rgba(11, 11, 11, 0.10);
+  --rejilla: #e1e0d9;
+  --serie-1: #2a78d6;   /* azul: datos medidos */
+  --serie-2: #eb6834;   /* naranja: temperatura ambiente */
+  --ideal: #898781;     /* gris: referencia ideal */
+  --bien: #0ca30c;
+  --aviso: #fab219;
+  --critico: #d03b3b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --fondo: #0d0d0d;
+    --superficie: #1a1a19;
+    --texto: #f0efec;
+    --texto-2: #c3c2b7;
+    --borde: rgba(255, 255, 255, 0.10);
+    --rejilla: #2c2c2a;
+    --serie-1: #3987e5;
+    --serie-2: #d95926;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 24px 16px 48px;
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.45;
+}
+
+.cabecera {
+  max-width: 1200px;
+  margin: 0 auto 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+h1 { margin: 0; font-size: 1.8rem; }
+h2 { margin: 0 0 12px; font-size: 1.05rem; }
+h3 { margin: 16px 0 8px; font-size: 0.9rem; color: var(--texto-2); font-weight: 600; }
+.subtitulo { margin: 4px 0 0; color: var(--texto-2); }
+.secundario { color: var(--texto-2); font-weight: normal; font-size: 0.9rem; }
+.ayuda { color: var(--texto-suave); font-size: 0.82rem; margin: 10px 0 0; }
+
+.rejilla {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 16px;
+}
+.tarjeta {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 16px;
+  min-width: 0;
+}
+.ancha { grid-column: 1 / -1; }
+
+/* Etiquetas de estado (siempre con texto, nunca solo color) */
+.etiqueta {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--borde);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.etiqueta-aviso { background: var(--aviso); color: #0b0b0b; border-color: transparent; }
+.etiqueta-ocupado { background: var(--serie-1); color: #fff; border-color: transparent; }
+.etiqueta-ocupado::before { content: "● "; animation: latido 1s infinite; }
+@keyframes latido { 50% { opacity: 0.2; } }
+
+.fila-estado { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 14px; }
+.botones { display: flex; flex-wrap: wrap; gap: 8px; }
+.boton {
+  font: inherit;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--borde);
+  background: var(--fondo);
+  color: var(--texto);
+  cursor: pointer;
+}
+.boton:hover:not(:disabled) { border-color: var(--serie-1); }
+.boton-principal { background: var(--serie-1); color: #fff; border-color: transparent; }
+.boton:disabled { opacity: 0.45; cursor: not-allowed; }
+.mensaje { min-height: 1.4em; margin: 10px 0 0; font-size: 0.9rem; color: var(--texto-2); }
+
+/* Cifras grandes */
+.cifras { display: flex; flex-wrap: wrap; gap: 20px; }
+.cifra { display: flex; flex-direction: column; }
+.cifra-valor { font-size: 1.9rem; font-weight: 600; }
+.cifra-nombre { font-size: 0.82rem; color: var(--texto-2); }
+.caliente { color: var(--critico); }
+
+/* Barras de uso por núcleo */
+.nucleos { display: grid; gap: 6px; }
+.nucleo { display: grid; grid-template-columns: 4.5em 1fr 3.5em; align-items: center; gap: 8px; font-size: 0.85rem; }
+.nucleo-barra { height: 10px; background: var(--rejilla); border-radius: 5px; overflow: hidden; }
+.nucleo-relleno { height: 100%; background: var(--serie-1); border-radius: 5px; transition: width 0.4s; }
+.nucleo-valor { text-align: right; font-variant-numeric: tabular-nums; color: var(--texto-2); }
+
+.grafica { position: relative; height: 260px; }
+
+.fractal { width: 100%; height: auto; border-radius: 8px; display: block; }
+
+/* Tabla */
+.tabla-contenedor { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+th, td { padding: 6px 8px; border-bottom: 1px solid var(--rejilla); text-align: left; white-space: nowrap; }
+th { color: var(--texto-2); font-weight: 600; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+tbody tr.inicio-bench td { border-top: 2px solid var(--borde); }

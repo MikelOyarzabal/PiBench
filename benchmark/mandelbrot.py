@@ -5,6 +5,8 @@ sus parámetros y no toca nada global. Por eso se puede ejecutar a la vez en
 varios hilos o procesos sin ningún problema.
 """
 
+import os
+
 from PIL import Image
 
 import config
@@ -49,4 +51,5 @@ def guardar_png(iteraciones, ancho, alto, max_iter, ruta):
 
     imagen = Image.new("RGB", (ancho, alto))
     imagen.putdata(pixeles)
+    os.makedirs(os.path.dirname(os.path.abspath(ruta)), exist_ok=True)
     imagen.save(ruta)

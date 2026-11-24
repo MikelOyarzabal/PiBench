@@ -104,7 +104,11 @@ compartido (por ejemplo `benchmark_en_curso`) y colas (`queue.Queue`) entre hilo
  Hilo monitor ─► SQLite (tabla lecturas) ◄── Web lee y muestra en tiempo real
 ```
 
-- **Web → benchmark:** la web pone una orden en `cola_ordenes` (se le pasa la cola al crear el proceso).
+- **Web → benchmark:** la web pone un evento en `cola_eventos`, la misma cola que usan los pulsadores;
+  el hilo pulsadores del controlador lo convierte en orden. Así la web y el pulsador siguen el mismo camino
+  (y se ignoran igual si hay un benchmark en curso).
+- **Estado del benchmark para la web:** `benchmark_en_curso` y `n_procesos` en memoria compartida
+  (`multiprocessing.Value`): el controlador escribe y la web lee.
 - **Estado en tiempo real:** el controlador escribe las lecturas en SQLite y la web las consulta cada segundo
   (`fetch` a `/api/estado`). Es sencillo y fácil de explicar.
 - **SQLite** en modo WAL, para que la web pueda leer mientras el controlador escribe.
@@ -265,8 +269,8 @@ En la Pi, crear el entorno virtual con `python3 -m venv --system-site-packages v
 - [x] Tests de inserción y consulta.
 
 ### Fase 5: Web
-- [ ] Flask en su propio proceso, con la API de la sección 6.
-- [ ] Dashboard con estado en tiempo real, botones, gráficas (Chart.js), tabla e imagen del fractal.
+- [x] Flask en su propio proceso, con la API de la sección 6.
+- [x] Dashboard con estado en tiempo real, botones, gráficas (Chart.js), tabla e imagen del fractal.
 - [ ] Lanzar el benchmark desde la web funciona igual que desde el pulsador.
 
 ### Fase 6: Sensor DHT20

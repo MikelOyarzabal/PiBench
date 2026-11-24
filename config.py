@@ -2,6 +2,10 @@
 
 import os
 
+# Rutas absolutas a partir de la carpeta del proyecto: así funcionan aunque el
+# programa se arranque desde otra carpeta (por ejemplo, como servicio).
+CARPETA_PROYECTO = os.path.dirname(os.path.abspath(__file__))
+
 # --- Modo simulado ---
 # Con PIBENCH_SIMULADO=1 todo funciona sin Raspberry (LEDs y pulsadores de mentira).
 SIMULADO = os.environ.get("PIBENCH_SIMULADO") == "1"
@@ -42,10 +46,16 @@ MAX_PROCESOS = 4
 N_PROCESOS_INICIAL = 4
 
 # Dónde se guarda la última imagen del fractal.
-RUTA_IMAGEN = os.path.join("resultados", "mandelbrot.png")
+RUTA_IMAGEN = os.path.join(CARPETA_PROYECTO, "resultados", "mandelbrot.png")
+
+# --- Web (Flask) ---
+# En la Pi, 0.0.0.0 para poder abrirla desde el portátil (http://grupo10.local:5000).
+# En modo simulado, solo desde el propio portátil.
+HOST_WEB = "127.0.0.1" if SIMULADO else "0.0.0.0"
+PUERTO_WEB = 5000
 
 # --- Base de datos (SQLite) ---
-RUTA_DB = "pibench.db"
+RUTA_DB = os.path.join(CARPETA_PROYECTO, "pibench.db")
 HORAS_LECTURAS = 24  # al arrancar se borran las lecturas más antiguas que esto
 
 # --- Hilos del controlador ---

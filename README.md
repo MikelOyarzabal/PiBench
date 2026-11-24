@@ -105,7 +105,25 @@ Los resultados y las lecturas de los sensores se guardan en `pibench.db` (SQLite
 python -m datos.db
 ```
 
-_La web y Telegram llegarán en las fases siguientes._
+### Web
+
+`main.py` también arranca la web (proceso aparte, Flask) en el puerto 5000:
+
+- En la Pi: desde el portátil, `http://grupo10.local:5000` (o con la IP de la Pi).
+- En modo simulado: `http://localhost:5000`.
+
+Muestra el estado y los sensores en tiempo real, botones para lanzar el benchmark, el barrido
+1–4 y cambiar el nº de procesos, gráficas (temperatura, tiempos, speedup), el histórico y el fractal.
+
+Chart.js se carga desde `web/static/vendor/chart.umd.min.js` si existe (funciona sin Internet)
+y, si no, desde el CDN. Para tener la copia local (una vez, y subirla al repositorio):
+
+```powershell
+New-Item -ItemType Directory -Force web\static\vendor
+Invoke-WebRequest https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js -OutFile web\static\vendor\chart.umd.min.js
+```
+
+_El bot de Telegram llegará en la fase 7._
 
 ## Tests
 

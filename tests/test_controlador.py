@@ -69,13 +69,19 @@ def test_n_procesos_da_la_vuelta():
 # --- Hilos con pines simulados ---
 
 def test_hilo_pulsadores(hw):
-    estado, ordenes, parpadeos = Estado(), queue.Queue(), queue.Queue()
-    hilo, parar = arrancar(hilo_pulsadores, hw, estado, ordenes, parpadeos)
+    estado, eventos, ordenes, parpadeos = Estado(), queue.Queue(), queue.Queue(), queue.Queue()
+    hilo, parar = arrancar(hilo_pulsadores, hw, estado, eventos, ordenes, parpadeos)
     try:
         simular_pulsacion(hw.pulsador_procesos, duracion=0)  # 4 -> 1
         assert parpadeos.get(timeout=2) == 1
         simular_pulsacion(hw.pulsador_lanzar, duracion=0)
         assert ordenes.get(timeout=2) == {"tipo": "lanzar", "n_procesos": 1}
+
+        # La web mete sus eventos en la misma cola: mismo efecto que el pulsador.
+        with estado.lock:
+            estado.benchmark_en_curso = False
+        eventos.put({"accion": "barrido", "origen": "web"})
+        assert ordenes.get(timeout=2) == {"tipo": "barrido", "n_procesos": 1}
     finally:
         parar.set()
         hilo.join(timeout=2)

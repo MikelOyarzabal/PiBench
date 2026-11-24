@@ -1,14 +1,15 @@
 """Proceso principal (controlador) de PiBench.
 
-Arranca el proceso benchmark y los hilos del controlador, y se encarga del
-cierre limpio con Ctrl+C.
+Arranca los procesos benchmark y web y los hilos del controlador, y se encarga
+del cierre limpio con Ctrl+C.
 
     Procesos:  controlador (este)  +  benchmark (benchmark_worker.py, con su Pool)
+               +  web (web/app.py, Flask)
     Hilos del controlador:  pulsadores, LEDs, monitor y resultados
 
 Uso:
     python main.py                       # en la Raspberry Pi
-    PIBENCH_SIMULADO=1 python main.py    # en el portátil: teclas en lugar de pulsadores
+    PIBENCH_SIMULADO=1 python main.py    # en el portátil: la web y el teclado hacen de pulsadores
 """
 
 import logging
@@ -27,6 +28,7 @@ from hardware import sensores
 from hardware.gpio import Hardware, simular_pulsacion
 from hardware.hilos import hilo_leds, hilo_monitor, hilo_pulsadores
 from registro import configurar_logging
+from web.app import proceso_web
 
 log = logging.getLogger("controlador")
 
@@ -139,23 +141,29 @@ def main():
     borradas = db.inicializar()
     log.info("Base de datos %s lista (%d lecturas antiguas borradas)", config.RUTA_DB, borradas)
 
-    # 1) Proceso benchmark. Se crea antes que los hilos para que el proceso nuevo
-    #    no herede hilos a medias.
-    cola_ordenes = mp.Queue()
-    cola_resultados = mp.Queue()
+    # 1) Procesos benchmark y web. Se crean antes que los hilos para que los
+    #    procesos nuevos no hereden hilos a medias.
+    estado = Estado()             # incluye la memoria compartida con la web
+    cola_eventos = mp.Queue()     # pulsadores y web -> hilo pulsadores
+    cola_ordenes = mp.Queue()     # controlador -> benchmark
+    cola_resultados = mp.Queue()  # benchmark -> controlador
     parar_proceso = mp.Event()
+
     proceso = mp.Process(target=proceso_benchmark, name="benchmark",
                          args=(cola_ordenes, cola_resultados, parar_proceso))
     proceso.start()
+    proceso_web_ = mp.Process(target=proceso_web, name="web",
+                              args=(cola_eventos, estado.en_curso_compartido,
+                                    estado.n_procesos_compartido))
+    proceso_web_.start()
 
-    # 2) Hardware, estado compartido e hilos.
+    # 2) Hardware e hilos.
     hw = Hardware()
-    estado = Estado()
     parar = threading.Event()
     cola_parpadeos = queue.Queue()
     hilos = [
         threading.Thread(target=hilo_pulsadores, name="pulsadores",
-                         args=(hw, estado, cola_ordenes, cola_parpadeos, parar)),
+                         args=(hw, estado, cola_eventos, cola_ordenes, cola_parpadeos, parar)),
         threading.Thread(target=hilo_leds, name="leds", args=(hw, estado, cola_parpadeos, parar)),
         threading.Thread(target=hilo_monitor, name="monitor", args=(estado, db, parar)),
         threading.Thread(target=hilo_resultados, name="resultados",
@@ -168,24 +176,35 @@ def main():
         teclado.start()
         hilos.append(teclado)
 
-    log.info("PiBench en marcha (%d procesos). Ctrl+C para salir.", estado.n_procesos)
+    log.info("PiBench en marcha (%d procesos). Web: http://%s:%d  Ctrl+C para salir.",
+             estado.n_procesos, "localhost" if config.SIMULADO else "<ip-de-la-pi>",
+             config.PUERTO_WEB)
 
     # 3) El hilo principal solo espera: a Ctrl+C, a la tecla q o a que muera el benchmark.
+    #    Si se cae la web, se avisa pero se sigue: el hardware y el benchmark no la necesitan.
+    aviso_web = False
     try:
         while not parar.is_set():
             if not proceso.is_alive():
                 log.error("El proceso benchmark ha terminado de forma inesperada")
                 break
+            if not proceso_web_.is_alive() and not aviso_web:
+                log.error("El proceso web ha terminado; el resto sigue funcionando")
+                aviso_web = True
             time.sleep(0.5)
     except KeyboardInterrupt:
         log.info("Ctrl+C recibido")
     finally:
-        cerrar(hw, hilos, parar, proceso, parar_proceso, cola_ordenes)
+        cerrar(hw, hilos, parar, proceso, parar_proceso, cola_ordenes, cola_eventos, proceso_web_)
 
 
-def cerrar(hw, hilos, parar, proceso, parar_proceso, cola_ordenes):
-    """Cierre limpio: hilos, proceso benchmark y LEDs, en ese orden."""
+def cerrar(hw, hilos, parar, proceso, parar_proceso, cola_ordenes, cola_eventos, proceso_web_):
+    """Cierre limpio: web, hilos, proceso benchmark y LEDs, en ese orden."""
     log.info("Cerrando...")
+
+    # La web no guarda nada propio (todo está en SQLite), así que se puede terminar directamente.
+    proceso_web_.terminate()
+    proceso_web_.join(timeout=5)
 
     parar.set()
     for hilo in hilos:
@@ -202,7 +221,8 @@ def cerrar(hw, hilos, parar, proceso, parar_proceso, cola_ordenes):
         log.warning("El proceso benchmark no responde: se fuerza su cierre")
         proceso.terminate()  # último recurso
         proceso.join(timeout=2)
-    cola_ordenes.cancel_join_thread()  # no esperar a vaciar la cola al salir
+    cola_ordenes.cancel_join_thread()  # no esperar a vaciar las colas al salir
+    cola_eventos.cancel_join_thread()
 
     hw.cerrar()
     log.info("Todo cerrado. Hasta luego.")

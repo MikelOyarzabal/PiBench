@@ -44,25 +44,30 @@ def cambiar_n_procesos(estado, cola_parpadeos):
 
 # --- Hilos ---
 
-def hilo_pulsadores(hw, estado, cola_ordenes, cola_parpadeos, parar):
-    """Recibe las pulsaciones y las convierte en órdenes.
+def hilo_pulsadores(hw, estado, cola_eventos, cola_ordenes, cola_parpadeos, parar):
+    """Recibe las pulsaciones (de los pulsadores y de la web) y las convierte en órdenes.
 
     Las funciones `when_pressed` de gpiozero se ejecutan en un hilo interno de
-    gpiozero; solo meten el evento en una cola para no bloquearlo. El trabajo
-    de verdad se hace aquí.
+    gpiozero; solo meten el evento en `cola_eventos` para no bloquearlo. La web
+    (otro proceso) mete sus eventos en la misma cola. Así, pulsar en la web hace
+    exactamente lo mismo que pulsar el botón físico.
+
+    Eventos: {"accion": "lanzar" | "barrido" | "procesos", "origen": "pulsador" | "web"}
     """
-    eventos = queue.Queue()
-    hw.pulsador_lanzar.when_pressed = lambda: eventos.put("lanzar")
-    hw.pulsador_procesos.when_pressed = lambda: eventos.put("procesos")
+    hw.pulsador_lanzar.when_pressed = lambda: cola_eventos.put(
+        {"accion": "lanzar", "origen": "pulsador"})
+    hw.pulsador_procesos.when_pressed = lambda: cola_eventos.put(
+        {"accion": "procesos", "origen": "pulsador"})
 
     while not parar.is_set():
         try:
-            evento = eventos.get(timeout=0.2)
+            evento = cola_eventos.get(timeout=0.2)
         except queue.Empty:
             continue
-        if evento == "lanzar":
-            pedir_benchmark(estado, cola_ordenes)
-        else:
+        log.debug("Evento %s desde %s", evento["accion"], evento["origen"])
+        if evento["accion"] in ("lanzar", "barrido"):
+            pedir_benchmark(estado, cola_ordenes, evento["accion"])
+        elif evento["accion"] == "procesos":
             cambiar_n_procesos(estado, cola_parpadeos)
 
     hw.pulsador_lanzar.when_pressed = None

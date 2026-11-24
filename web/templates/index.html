@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PiBench</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
+</head>
+<body>
+  <header class="cabecera">
+    <div>
+      <h1>PiBench</h1>
+      <p class="subtitulo">Secuencial vs hilos vs procesos en una Raspberry Pi 5 · Arquitectura de Computadores, grupo 10</p>
+    </div>
+    {% if simulado %}<span class="etiqueta etiqueta-aviso">Modo simulado</span>{% endif %}
+  </header>
+
+  <main class="rejilla">
+    <!-- Benchmark: estado y botones -->
+    <section class="tarjeta">
+      <h2>Benchmark</h2>
+      <div class="fila-estado">
+        <span id="estado-benchmark" class="etiqueta">—</span>
+        <span class="secundario">Procesos elegidos: <strong id="n-procesos">—</strong> / {{ max_procesos }}</span>
+      </div>
+      <div class="botones">
+        <button id="boton-lanzar" class="boton boton-principal">Lanzar benchmark</button>
+        <button id="boton-barrido" class="boton">Barrido 1–{{ max_procesos }} procesos</button>
+        <button id="boton-procesos" class="boton">Cambiar nº de procesos</button>
+      </div>
+      <p id="mensaje" class="mensaje" role="status"></p>
+      <p class="ayuda">Los botones hacen lo mismo que los pulsadores de la Pi: pulsador 1 = lanzar, pulsador 2 = nº de procesos.</p>
+    </section>
+
+    <!-- Sensores en tiempo real -->
+    <section class="tarjeta">
+      <h2>Sensores <span class="secundario" id="hora-lectura"></span></h2>
+      <div class="cifras">
+        <div class="cifra">
+          <span class="cifra-valor" id="temp-cpu">—</span>
+          <span class="cifra-nombre">Temperatura CPU</span>
+        </div>
+        <div class="cifra">
+          <span class="cifra-valor" id="temp-ambiente">—</span>
+          <span class="cifra-nombre">Temperatura ambiente</span>
+        </div>
+        <div class="cifra">
+          <span class="cifra-valor" id="humedad">—</span>
+          <span class="cifra-nombre">Humedad</span>
+        </div>
+      </div>
+      <h3>Uso de cada núcleo</h3>
+      <div id="nucleos" class="nucleos"></div>
+    </section>
+
+    <!-- Gráfica: temperatura -->
+    <section class="tarjeta ancha">
+      <h2>Temperatura de la CPU (últimos 10 min)</h2>
+      <div class="grafica"><canvas id="grafica-temp" aria-label="Temperatura de la CPU en los últimos 10 minutos"></canvas></div>
+    </section>
+
+    <!-- Gráficas: tiempos y speedup -->
+    <section class="tarjeta">
+      <h2>Tiempos del último benchmark <span class="secundario" id="id-ultimo"></span></h2>
+      <div class="grafica"><canvas id="grafica-tiempos" aria-label="Tiempo de cada versión en el último benchmark"></canvas></div>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Speedup frente a nº de procesos</h2>
+      <div class="grafica"><canvas id="grafica-speedup" aria-label="Speedup medio con 1 a 4 procesos frente al ideal"></canvas></div>
+      <p class="ayuda">Media de todas las ejecuciones con procesos. Speedup = tiempo secuencial / tiempo de la versión.</p>
+    </section>
+
+    <!-- Fractal -->
+    <section class="tarjeta">
+      <h2>Último fractal calculado</h2>
+      <img id="imagen-fractal" class="fractal" alt="Fractal de Mandelbrot calculado en el último benchmark" hidden>
+      <p id="sin-imagen" class="secundario">Todavía no hay imagen: lanza un benchmark.</p>
+    </section>
+
+    <!-- Histórico -->
+    <section class="tarjeta ancha">
+      <h2>Histórico de ejecuciones</h2>
+      <div class="tabla-contenedor">
+        <table>
+          <thead>
+            <tr>
+              <th>Bench.</th><th>Fecha</th><th>Versión</th><th class="num">Trab.</th>
+              <th class="num">Tiempo (s)</th><th class="num">Speedup</th>
+              <th class="num">T. inicio</th><th class="num">T. máx</th><th>Throttling</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-ejecuciones">
+            <tr><td colspan="9" class="secundario">Sin ejecuciones todavía.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Chart.js: primero la copia local (funciona sin Internet); si no está, desde el CDN. -->
+  <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"
+          onerror="var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';document.head.appendChild(s);"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
