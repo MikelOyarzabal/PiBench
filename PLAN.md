@@ -253,10 +253,10 @@ En la Pi, crear el entorno virtual con `python3 -m venv --system-site-packages v
 ### Fase 3: Procesos e hilos
 - [x] `benchmark_worker.py`: proceso que espera órdenes en `cola_ordenes` y devuelve resultados en `cola_resultados`.
 - [x] Hilos de pulsadores, LEDs, monitor y resultados en el controlador.
-- [ ] Pulsador 1 lanza el benchmark; el LED de estado parpadea durante el cálculo y se queda fijo al acabar.
-- [ ] Pulsador 2 cambia el nº de procesos (1→4) y el LED parpadea tantas veces como el número elegido.
-- [ ] Ignorar pulsaciones mientras hay un benchmark en curso.
-- [ ] **Cierre limpio** con Ctrl+C: se paran hilos y procesos y se apagan los LEDs.
+- [x] Pulsador 1 lanza el benchmark; el LED de estado parpadea durante el cálculo y se queda fijo al acabar.
+- [x] Pulsador 2 cambia el nº de procesos (1→4) y el LED parpadea tantas veces como el número elegido.
+- [x] Ignorar pulsaciones mientras hay un benchmark en curso.
+- [x] **Cierre limpio** con Ctrl+C: se paran hilos y procesos y se apagan los LEDs.
 
 ### Fase 4: Base de datos
 - [ ] `db.py` con las tablas de la sección 5 (modo WAL).
