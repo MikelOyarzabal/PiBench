@@ -60,9 +60,16 @@ def con_hilos(ancho, alto, max_iter, n_hilos=config.HILOS):
         return _unir(partes)
 
 
-def _ignorar_ctrl_c():
-    """Los trabajadores del Pool ignoran Ctrl+C: el cierre lo organiza el programa principal."""
+def _preparar_trabajador():
+    """Se ejecuta al arrancar cada trabajador del Pool.
+
+    - Ignoran Ctrl+C: el cierre lo organiza el programa principal.
+    - SIGTERM vuelve a su comportamiento normal (terminar). En Linux los trabajadores
+      se crean copiando el proceso benchmark (fork) y heredarían su manejador de
+      SIGTERM; el Pool usa SIGTERM para cerrarlos y ese manejador daría errores.
+    """
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+    signal.signal(signal.SIGTERM, signal.SIG_DFL)
 
 
 def con_procesos(ancho, alto, max_iter, n_procesos):
@@ -73,7 +80,7 @@ def con_procesos(ancho, alto, max_iter, n_procesos):
     que es un coste real del paralelismo con procesos.
     """
     tareas = _tareas(ancho, alto, max_iter, n_procesos)
-    with Pool(processes=n_procesos, initializer=_ignorar_ctrl_c) as pool:
+    with Pool(processes=n_procesos, initializer=_preparar_trabajador) as pool:
         partes = pool.starmap(calcular_filas, tareas)  # starmap mantiene el orden
     return _unir(partes)
 
