@@ -16,6 +16,7 @@ import logging
 import multiprocessing as mp
 import os
 import queue
+import signal
 import socket
 import sys
 import threading
@@ -124,8 +125,8 @@ def leer_tecla():
 
 
 def hilo_teclado(hw, parar):
-    print("Modo simulado. Teclas: [l] lanzar benchmark, [p] cambiar nº de procesos, [q] salir"
-          " (en Linux, pulsa Enter después de la tecla)")
+    log.info("Modo simulado. Teclas: [l] lanzar benchmark, [p] cambiar nº de procesos, [q] salir"
+             " (en Linux, pulsa Enter después de la tecla)")
     while not parar.is_set():
         tecla = (leer_tecla() or "").lower()
         if not tecla:
@@ -139,6 +140,10 @@ def hilo_teclado(hw, parar):
 
 
 # --- Arranque y cierre ---
+
+def _sigterm_como_ctrl_c(signum, frame):
+    raise KeyboardInterrupt
+
 
 def main():
     configurar_logging()
@@ -164,6 +169,10 @@ def main():
                               args=(cola_eventos, estado.en_curso_compartido,
                                     estado.n_procesos_compartido))
     proceso_web_.start()
+
+    # SIGTERM (lo que envían `kill` y `systemctl stop`) hace lo mismo que Ctrl+C:
+    # cierre limpio. Se pone después de crear los procesos para que no lo hereden.
+    signal.signal(signal.SIGTERM, _sigterm_como_ctrl_c)
 
     # 2) Hardware e hilos.
     hw = Hardware()
@@ -207,7 +216,7 @@ def main():
                 aviso_web = True
             time.sleep(0.5)
     except KeyboardInterrupt:
-        log.info("Ctrl+C recibido")
+        log.info("Ctrl+C (o SIGTERM) recibido")
     finally:
         cerrar(hw, hilos, parar, proceso, parar_proceso, cola_ordenes, cola_eventos, proceso_web_)
 

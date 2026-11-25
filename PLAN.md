@@ -294,9 +294,9 @@ En la Pi, crear el entorno virtual con `python3 -m venv --system-site-packages v
 
 ### Fase 8: Robustez y pulido
 - [ ] Probar 20 benchmarks seguidos sin errores ni procesos colgados.
-- [ ] Logs claros (módulo `logging`) en lugar de `print`.
+- [x] Logs claros (módulo `logging`) en lugar de `print`.
 - [ ] Servicio `systemd` opcional para arrancar al encender la Pi.
-- [ ] README completo: conexiones (con foto o esquema), instalación y ejecución.
+- [x] README completo: conexiones (con foto o esquema), instalación y ejecución.
 
 ### Fase 9: Defensa
 - [ ] Gráfica de speedup frente a nº de procesos (1–4) con datos reales de la Pi.

@@ -1,0 +1,37 @@
+# Servicio systemd para arrancar PiBench al encender la Raspberry Pi.
+#
+# Instalar (en la Pi, desde la carpeta del proyecto):
+#   sudo cp deploy/pibench.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now pibench      # arranca ya y en cada encendido
+#
+# Usar:
+#   systemctl status pibench                 # ¿está en marcha?
+#   journalctl -u pibench -f                 # ver el log en directo (Ctrl+C para dejar de verlo)
+#   sudo systemctl stop pibench              # parar (cierre limpio, como Ctrl+C)
+#   sudo systemctl disable pibench           # que no arranque al encender
+#
+# Si el usuario o la carpeta no son pi y /home/pi/PiBench, cambiarlos abajo.
+
+[Unit]
+Description=PiBench: benchmark secuencial vs hilos vs procesos
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/PiBench
+ExecStart=/home/pi/PiBench/venv/bin/python main.py
+Environment=PYTHONUNBUFFERED=1
+
+# Parar: SIGINT al proceso principal (como Ctrl+C), que cierra hilos, procesos y LEDs.
+# Si en TimeoutStopSec no ha terminado, systemd mata a todos sus procesos.
+KillSignal=SIGINT
+KillMode=mixed
+TimeoutStopSec=30
+
+# Si el programa se cae, volver a arrancarlo a los 5 s.
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
