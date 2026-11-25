@@ -82,6 +82,10 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "").strip()
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
 TIMEOUT_TELEGRAM_S = 5       # si Telegram no responde en este tiempo, se descarta el mensaje
 MAX_MENSAJES_PENDIENTES = 20 # sin Internet, no acumular mensajes sin límite
+# Como mucho un aviso de alerta de temperatura por Telegram cada este tiempo (el LED
+# sí se enciende cada vez). Con benchmarks seguidos la alerta se activa y desactiva
+# en cada uno, y sin este límite llegaban varios avisos por minuto.
+INTERVALO_AVISOS_ALERTA_S = 10 * 60
 
 # --- Hilos del controlador ---
 INTERVALO_MONITOR_S = 2.0            # lecturas de temperatura y uso normales

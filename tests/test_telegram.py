@@ -1,5 +1,6 @@
 """Notificador de Telegram. No se conecta nunca de verdad: requests.post se sustituye."""
 
+import itertools
 import logging
 import threading
 import time
@@ -171,6 +172,49 @@ def test_al_terminar_el_benchmark_se_manda_el_resumen(tmp_path):
                                 "paleta": "Bosque"}, db, notificador)
     [mensaje] = notificador.mensajes
     assert "benchmark nº 5" in mensaje and "Procesos (2)" in mensaje and "Bosque" in mensaje
+
+
+def monitor_con_temperaturas(tmp_path, monkeypatch, temperaturas, segundos=0.6):
+    """Ejecuta el hilo monitor con temperaturas de CPU inventadas (se repiten en bucle).
+    Devuelve (mensajes de Telegram, nº de veces que se activó la alerta)."""
+    db = BaseDatos(tmp_path / "t.db")
+    db.inicializar()
+    lecturas = itertools.cycle(temperaturas)
+    monkeypatch.setattr(sensores, "temp_cpu", lambda: next(lecturas))
+    monkeypatch.setattr(config, "INTERVALO_MONITOR_S", 0.05)
+    estado, notificador = Estado(), NotificadorFalso()
+    activaciones = []
+    original = hilos.actualizar_alerta
+
+    def contar(activa, temp):
+        nueva = original(activa, temp)
+        if nueva and not activa:
+            activaciones.append(temp)
+        return nueva
+
+    monkeypatch.setattr(hilos, "actualizar_alerta", contar)
+    parar = threading.Event()
+    hilo = threading.Thread(target=hilos.hilo_monitor, args=(estado, db, notificador, parar))
+    hilo.start()
+    time.sleep(segundos)
+    parar.set()
+    hilo.join(timeout=3)
+    return notificador.mensajes, len(activaciones)
+
+
+def test_alerta_que_sube_y_baja_solo_avisa_una_vez(tmp_path, monkeypatch):
+    """Como en la prueba de 20 benchmarks: la alerta se activa y desactiva una y otra vez."""
+    caliente, fria = config.UMBRAL_TEMP_CPU + 2, config.UMBRAL_TEMP_CPU - 10
+    mensajes, activaciones = monitor_con_temperaturas(tmp_path, monkeypatch, [caliente, fria])
+    assert activaciones >= 3                     # el LED se enciende cada vez...
+    assert mensajes == [aviso_alerta(caliente)]  # ...pero Telegram solo avisa una
+
+
+def test_pasado_el_intervalo_vuelve_a_avisar(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "INTERVALO_AVISOS_ALERTA_S", 0)
+    caliente, fria = config.UMBRAL_TEMP_CPU + 2, config.UMBRAL_TEMP_CPU - 10
+    mensajes, activaciones = monitor_con_temperaturas(tmp_path, monkeypatch, [caliente, fria])
+    assert len(mensajes) == activaciones >= 3
 
 
 def test_alerta_de_temperatura_avisa_una_vez(tmp_path, monkeypatch):

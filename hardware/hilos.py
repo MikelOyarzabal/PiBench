@@ -135,6 +135,7 @@ def hilo_monitor(estado, db, notificador, parar):
     sensor_ambiente = sensores.SensorAmbiente()
     if not sensor_ambiente.disponible:
         log.warning("Sensor de ambiente (DHT11) no encontrado: se sigue sin él")
+    ultimo_aviso = None  # cuándo se avisó por Telegram de la última alerta
 
     while not parar.is_set():
         temp = sensores.temp_cpu()
@@ -166,8 +167,14 @@ def hilo_monitor(estado, db, notificador, parar):
         if alerta != alerta_antes:
             if alerta:
                 log.warning("¡Alerta! CPU a %.1f °C (umbral %.0f °C)", temp, config.UMBRAL_TEMP_CPU)
-                if notificador is not None:
-                    notificador.enviar(aviso_alerta(temp))
+                ahora = time.monotonic()
+                if ultimo_aviso is None or ahora - ultimo_aviso >= config.INTERVALO_AVISOS_ALERTA_S:
+                    if notificador is not None:
+                        notificador.enviar(aviso_alerta(temp))
+                    ultimo_aviso = ahora
+                else:
+                    log.info("Aviso por Telegram omitido: ya se avisó hace %.0f s",
+                             ahora - ultimo_aviso)
             else:
                 log.info("Fin de la alerta: CPU a %.1f °C", temp)
 

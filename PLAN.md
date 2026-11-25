@@ -293,7 +293,7 @@ En la Pi, crear el entorno virtual con `python3 -m venv --system-site-packages v
 - [ ] Probar en la red de la universidad.
 
 ### Fase 8: Robustez y pulido
-- [ ] Probar 20 benchmarks seguidos sin errores ni procesos colgados.
+- [x] Probar 20 benchmarks seguidos sin errores ni procesos colgados.
 - [x] Logs claros (módulo `logging`) en lugar de `print`.
 - [ ] Servicio `systemd` opcional para arrancar al encender la Pi.
 - [x] README completo: conexiones (con foto o esquema), instalación y ejecución.

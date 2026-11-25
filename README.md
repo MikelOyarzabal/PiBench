@@ -140,10 +140,15 @@ python main.py                       # en la Raspberry Pi
 PIBENCH_SIMULADO=1 python main.py    # en el portátil: teclas l (lanzar), p (nº procesos), q (salir)
 ```
 
+> ⚠️ **Si está instalado el servicio systemd, páralo antes de ejecutar `main.py` a mano:**
+> `sudo systemctl stop pibench`. Si no, habría dos PiBench a la vez peleándose por los pines
+> GPIO y por el puerto 5000. Al acabar, se vuelve a arrancar con `sudo systemctl start pibench`.
+
 - **Pulsador 1:** lanza el benchmark (secuencial, hilos y procesos con el N elegido).
   El LED 1 parpadea durante el cálculo y se queda fijo al acabar.
 - **Pulsador 2:** cambia el nº de procesos (1 → 2 → 3 → 4 → 1); el LED 2 parpadea N veces.
 - **LED 2 fijo:** alerta, la CPU ha llegado a 75 °C (se apaga al bajar de 72 °C; ajustable en `config.py`).
+  Por Telegram se avisa como mucho una vez cada 10 minutos (`INTERVALO_AVISOS_ALERTA_S`).
 - Mientras hay un benchmark en curso, las pulsaciones se ignoran.
 - **Ctrl+C** (o `kill`, o `systemctl stop`) cierra todo de forma ordenada: hilos, procesos y LEDs.
 

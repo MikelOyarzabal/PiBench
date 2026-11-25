@@ -15,13 +15,20 @@
 
 [Unit]
 Description=PiBench: benchmark secuencial vs hilos vs procesos
-After=network.target
+# Esperar a que la red esté configurada, para que el mensaje de Telegram
+# "PiBench en marcha" pueda salir al arrancar. (Si aun así no hay Internet,
+# PiBench arranca igual y solo deja un aviso en el log.)
+Wants=network-online.target
+After=network-online.target
 
 [Service]
 User=pi
 WorkingDirectory=/home/pi/PiBench
 ExecStart=/home/pi/PiBench/venv/bin/python main.py
 Environment=PYTHONUNBUFFERED=1
+# El token de Telegram: config.py ya carga /home/pi/PiBench/.env por su ruta completa.
+# EnvironmentFile lo carga también desde systemd; el "-" hace que no falle si no existe.
+EnvironmentFile=-/home/pi/PiBench/.env
 
 # Parar: SIGINT al proceso principal (como Ctrl+C), que cierra hilos, procesos y LEDs.
 # Si en TimeoutStopSec no ha terminado, systemd mata a todos sus procesos.
